@@ -1,0 +1,11 @@
+<table class="table table-hover">
+  {{ $workstations := . }} 
+  <tr>
+    <th>Name</th>
+  </tr>
+  {{range $index, $workstation := $workstations }}
+    <tr>
+      <td><a href="/shell/{{$workstation}}">{{$workstation}}</a></td>
+    </tr>
+  {{end}}
+</table>

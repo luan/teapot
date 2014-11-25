@@ -1,0 +1,55 @@
+<h1>Workstation: {{.}}</h1>
+
+<div id="terminal"></div>
+
+<script type="text/javascript" src="/term.js"></script>
+<script type="text/javascript">
+
+Terminal.tangoColors = [
+'#3d352a',
+  '#cd5c5c',
+  '#86af80',
+  '#e8ae5b',
+  '#6495ed',
+  '#deb887',
+  '#b0c4de',
+  '#bbaa99',
+  '#554444',
+  '#cc5533',
+  '#88aa22',
+  '#ffa75d',
+  '#87ceeb',
+  '#996600',
+  '#b0c4de',
+  '#ddccbb'
+  ];
+
+  window.addEventListener('load', function() {
+      var connection = new WebSocket('ws://{{.}}-tiego.192.168.11.11.xip.io/shell');
+      connection.onopen = function () {
+        var term = new Terminal({
+          cols: 150,
+          rows: 40,
+          useStyle: true,
+          screenKeys: true,
+          cursorBlink: false
+        });
+
+        term.open($('#terminal').get(0));
+
+        term.on('data', function(data) {
+          connection.send(data);
+          });
+
+        term.on('title', function(title) {
+          document.title = title;
+        });
+
+
+      connection.onmessage = function (e) {
+        term.write(e.data);
+      };
+      }
+  }, false);
+
+</script>
