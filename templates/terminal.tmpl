@@ -1,4 +1,4 @@
-<h1>Workstation: {{.}}</h1>
+<h1>Workstation: {{.Name}}</h1>
 
 <div id="terminal"></div>
 
@@ -25,7 +25,7 @@ Terminal.tangoColors = [
   ];
 
   window.addEventListener('load', function() {
-      var connection = new WebSocket('ws://{{.}}-tiego.192.168.11.11.xip.io/shell');
+      var connection = new WebSocket('ws://{{.Name}}-tiego.{{.RouteRoot}}/shell');
       connection.onopen = function () {
         var term = new Terminal({
           cols: 150,

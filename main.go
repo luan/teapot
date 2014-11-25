@@ -70,7 +70,10 @@ func main() {
 	})
 
 	m.Get("/shell/:name", func(params martini.Params, r render.Render) {
-		r.HTML(200, "terminal", params["name"])
+		r.HTML(200, "terminal", struct {
+			Name      string
+			RouteRoot string
+		}{params["name"], routeRoot})
 	})
 
 	m.Use(martini.Static("public"))
