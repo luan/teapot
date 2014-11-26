@@ -1,46 +1,43 @@
 FORMAT: 1A
 
 # teapot
-Notes API is a *short texts saving* service similar to its physical paper presence on your table.
+Teapot API is an API for [Tiego](http://github.com/luan/tiego) to manage on demand docker workstations.
 
-# Group Notes
-Notes related resources of the **Notes API**
+# Group Workstations
+Workstations related resources of the **Teapot API**
 
-## Notes Collection [/notes]
-### List all Notes [GET]
+## Workstations Collection [/workstations]
+### List all Workstations [GET]
 + Response 200 (application/json)
 
         [{
-          "id": 1, "title": "Jogging in park"
+          "name": "trusty", "docker_image": "docker:///ubuntu:trusty"
         }, {
-          "id": 2, "title": "Pick-up posters from post-office"
+          "name": "wheezy", "docker_image": "docker:///debian:wheezy"
         }]
 
-### Create a Note [POST]
+### Create a Workstation [POST]
 + Request (application/json)
 
-        { "title": "Buy cheese and bread for breakfast." }
+        { "name": "golang", "docker_image": "docker:///golang:1.3.3" }
 
 + Response 201 (application/json)
 
-        { "id": 3, "title": "Buy cheese and bread for breakfast." }
+        { "name": "golang", "docker_image": "docker:///golang:1.3.3" }
 
-## Note [/notes/{id}]
-A single Note object with all its details
+## Workstation [/workstations/{name}]
+A single Workstation object with all its details
 
 + Parameters
-    + id (required, number, `1`) ... Numeric `id` of the Note to perform action with. Has example value.
+    + name (required, string, `golang`) ... String `name` of the Workstation to perform action with. Has example value.
 
-### Retrieve a Note [GET]
+### Retrieve a Workstation [GET]
 + Response 200 (application/json)
-
-    + Header
-
-            X-My-Header: The Value
 
     + Body
 
-            { "id": 2, "title": "Pick-up posters from post-office" }
+            { "name": "golang", "docker_image": "docker:///golang:1.3.3" }
 
-### Remove a Note [DELETE]
+### Remove a Workstation [DELETE]
 + Response 204
+
