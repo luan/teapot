@@ -2,10 +2,20 @@
   {{ $workstations := . }} 
   <tr>
     <th>Name</th>
+    <th>Docker Image</th>
+    <th>State</th>
+    <th></th>
   </tr>
   {{range $index, $workstation := $workstations }}
     <tr>
-      <td><a href="/shell/{{$workstation}}">{{$workstation}}</a></td>
+      <td>{{$workstation.Name}}</td>
+      <td>{{$workstation.DockerImage}}</td>
+      <td>{{$workstation.State}}</td>
+      <td>
+        {{ if $workstation.Running }}
+          <a class="btn btn-success" href="/shell/{{$workstation.Name}}">Attach</a>
+        {{ end }}
+      </td>
     </tr>
   {{end}}
 </table>
