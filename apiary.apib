@@ -2,7 +2,15 @@ FORMAT: 1A
 HOST: http://teapot.192.168.11.11.xip.io
 
 # Teapot
-Teapot API is an API for [Tiego](http://github.com/luan/tiego) to manage on demand docker workstations.
+**Teapot API** is an API for [Tiego](http://github.com/luan/tiego) to manage on demand docker workstations.
+
+## Errors
+
+The **Teapot API** has a limited number of simple error codes that apply to all of its requests:
+
+ - `422 Unprocessable Entity`: Any validation error
+ - `404 Not Found`: Any request that didn't match a route or a resource
+ - `400 Bad Request`: Any request with an invalid body (i.e. invalid *JSON*)
 
 # Group Workstations
 Workstations are the base resource of the **Teapot API**
