@@ -1,12 +1,27 @@
 FORMAT: 1A
+HOST: teapot.192.168.11.11.xip.io
 
-# teapot
+# Teapot
 Teapot API is an API for [Tiego](http://github.com/luan/tiego) to manage on demand docker workstations.
 
 # Group Workstations
-Workstations related resources of the **Teapot API**
+Workstations are the base resource of the **Teapot API**
 
+The workstation resource has the following attributes:
+
+  - name **string**
+    - *required*, *unique*
+    - *format*:
+        - alphanumeric
+        - dashes allowed
+        - underscores **forbbiden**
+  - docker_image **string**
+    - *optional*: defaults to `docker:///ubuntu:trusty`
+    - *format*: `docker:///<image-name>`
+        - image-name must not contain `:`s
+    
 ## Workstations Collection [/workstations]
+
 ### List all Workstations [GET]
 + Response 200 (application/json)
 
