@@ -26,9 +26,9 @@ The workstation resource has the following attributes:
 + Response 200 (application/json)
 
         [{
-          "name": "trusty", "docker_image": "docker:///ubuntu#trusty"
+          "name": "trusty", "docker_image": "docker:///ubuntu#trusty", "state": "RUNNING"
         }, {
-          "name": "wheezy", "docker_image": "docker:///debian#wheezy"
+          "name": "wheezy", "docker_image": "docker:///debian#wheezy", "state": "STOPPED"
         }]
 
 ### Create a Workstation [POST]
@@ -51,7 +51,7 @@ A single Workstation object with all its details
 
     + Body
 
-            { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
+            { "name": "golang", "docker_image": "docker:///golang#1.3.3", "state": "RUNNING" }
 
 ### Remove a Workstation [DELETE]
 + Response 204
