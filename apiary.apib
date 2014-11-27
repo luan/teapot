@@ -16,7 +16,7 @@ The workstation resource has the following attributes:
         - dashes allowed
         - underscores **forbbiden**
   - docker_image **string**
-    - *optional*: defaults to `docker:///ubuntu:trusty`
+    - *optional*: defaults to `docker:///ubuntu#trusty`
     - *format*: `docker:///<image-name>`
         - image-name must not contain `:`s
     
@@ -26,19 +26,19 @@ The workstation resource has the following attributes:
 + Response 200 (application/json)
 
         [{
-          "name": "trusty", "docker_image": "docker:///ubuntu:trusty"
+          "name": "trusty", "docker_image": "docker:///ubuntu#trusty"
         }, {
-          "name": "wheezy", "docker_image": "docker:///debian:wheezy"
+          "name": "wheezy", "docker_image": "docker:///debian#wheezy"
         }]
 
 ### Create a Workstation [POST]
 + Request (application/json)
 
-        { "name": "golang", "docker_image": "docker:///golang:1.3.3" }
+        { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
 
 + Response 201 (application/json)
 
-        { "name": "golang", "docker_image": "docker:///golang:1.3.3" }
+        { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
 
 ## Workstation [/workstations/{name}]
 A single Workstation object with all its details
@@ -51,7 +51,7 @@ A single Workstation object with all its details
 
     + Body
 
-            { "name": "golang", "docker_image": "docker:///golang:1.3.3" }
+            { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
 
 ### Remove a Workstation [DELETE]
 + Response 204
