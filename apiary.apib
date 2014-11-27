@@ -14,19 +14,6 @@ The **Teapot API** has a limited number of simple error codes that apply to all 
 
 # Group Workstations
 Workstations are the base resource of the **Teapot API**
-
-The workstation resource has the following attributes:
-
-  - name **string**
-    - *required*, *unique*
-    - *format*:
-        - alphanumeric
-        - dashes allowed
-        - underscores **forbbiden**
-  - docker_image **string**
-    - *optional*: defaults to `docker:///ubuntu#trusty`
-    - *format*: `docker:///<image-name>`
-        - image-name must not contain `:`s
     
 ## Workstations Collection [/workstations]
 
@@ -40,6 +27,11 @@ The workstation resource has the following attributes:
         }]
 
 ### Create a Workstation [POST]
+
++ Parameters
+    + name (required, string, `golang`) ... Unique `name` of the Workstation
+    + docker_image = `docker:///ubuntu#trusty` (optional, string, `docker:///debian#wheezy`) ... Docker image to be used **must be availabe on _hub.docker.com_**
+
 + Request (application/json)
 
         { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
