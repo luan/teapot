@@ -36,6 +36,15 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(workstationRequest.Name) <= 0 {
+		log.Error("invalid-workstation", err)
+		writeJSONResponse(w, http.StatusTeapot, teapot.Error{
+			Type:    teapot.InvalidWorkstation,
+			Message: "",
+		})
+		return
+	}
+
 	err = h.receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 		ProcessGuid: workstationRequest.Name,
 		Domain:      "teapot",
@@ -53,7 +62,7 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Error("create-desired-lrp", err)
-		w.WriteHeader(http.StatusTeapot)
+		w.WriteHeader(http.StatusBadGateway)
 	} else {
 		log.Info("created", lager.Data{"workstation-name": workstationRequest.Name})
 		w.WriteHeader(http.StatusCreated)

@@ -37,6 +37,10 @@ var _ = Describe("WorkstationHandler", func() {
 			DockerImage: "docker://docker",
 		}
 
+		invalidCreateRequest := teapot.WorkstationCreateRequest{
+			DockerImage: "docker://docker",
+		}
+
 		Context("when everything succeeds", func() {
 			JustBeforeEach(func() {
 				handler.Create(responseRecorder, newTestRequest(validCreateRequest))
@@ -48,6 +52,24 @@ var _ = Describe("WorkstationHandler", func() {
 
 			It("responds with an empty body", func() {
 				Expect(responseRecorder.Body.String()).To(Equal(""))
+			})
+		})
+
+		Context("when the requested workstation is invalid", func() {
+			BeforeEach(func() {
+				handler.Create(responseRecorder, newTestRequest(invalidCreateRequest))
+			})
+
+			It("responds with 418 I'M A TEAPOT", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusTeapot))
+			})
+
+			It("responds with a relevant error message", func() {
+				expectedBody, _ := json.Marshal(teapot.Error{
+					Type:    teapot.InvalidWorkstation,
+					Message: "",
+				})
+				Expect(responseRecorder.Body.String()).To(Equal(string(expectedBody)))
 			})
 		})
 

@@ -10,6 +10,8 @@ func (err Error) Error() string {
 }
 
 const (
+	InvalidWorkstation = "InvalidWorkstation"
+
 	InvalidJSON = "InvalidJSON"
 
 	UnknownError = "UnknownError"
