@@ -10,7 +10,7 @@ type Workstation struct {
 func (workstation Workstation) Validate() error {
 	var validationError ValidationError
 
-	matched, err := regexp.MatchString("^[a-zA-Z0-9.-]+$", workstation.Name)
+	matched, err := regexp.MatchString("^[\\w-]+$", workstation.Name)
 	if err != nil || !matched {
 		validationError = append(validationError, ErrInvalidField{"name"})
 	}

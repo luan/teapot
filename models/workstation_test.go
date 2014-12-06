@@ -14,7 +14,7 @@ var _ = Describe("Workstation", func() {
 		Context("when the workstation has a valid name and docker_image", func() {
 			It("is valid", func() {
 				workstation = Workstation{
-					Name:        "w-1",
+					Name:        "w_-1",
 					DockerImage: "docker:///a#b",
 				}
 
@@ -41,9 +41,6 @@ var _ = Describe("Workstation", func() {
 			},
 			{"name",
 				Workstation{Name: "a b"},
-			},
-			{"name",
-				Workstation{Name: "a_b"},
 			},
 		} {
 			testValidatorErrorCase(testCase)
