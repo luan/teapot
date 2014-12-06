@@ -15,6 +15,8 @@ func NewWorkstation(arguments ...string) Workstation {
 	}
 	if len(arguments) > 1 {
 		dockerImage = arguments[1]
+	} else {
+		dockerImage = "docker:///ubuntu#trusty"
 	}
 
 	return Workstation{name, dockerImage}

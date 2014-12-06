@@ -10,6 +10,13 @@ import (
 var _ = Describe("Workstation", func() {
 	var workstation Workstation
 
+	Describe("NewWorkstation", func() {
+		It("defaults dockerImage to something valid", func() {
+			workstation = NewWorkstation()
+			Expect(workstation.DockerImage).To(Equal("docker:///ubuntu#trusty"))
+		})
+	})
+
 	Describe("Validate", func() {
 		Context("when the workstation has a valid name and docker_image", func() {
 			It("is valid", func() {
