@@ -13,10 +13,7 @@ var _ = Describe("Workstation", func() {
 	Describe("Validate", func() {
 		Context("when the workstation has a valid name and docker_image", func() {
 			It("is valid", func() {
-				workstation = Workstation{
-					Name:        "w_-1",
-					DockerImage: "docker:///a#b",
-				}
+				workstation = NewWorkstation("w_-1", "docker:///a#b")
 
 				err := workstation.Validate()
 				Expect(err).NotTo(HaveOccurred())
@@ -25,9 +22,7 @@ var _ = Describe("Workstation", func() {
 
 		Context("when the workstation name is present but invalid", func() {
 			It("returns an error indicating so", func() {
-				workstation = Workstation{
-					Name: "invalid/guid",
-				}
+				workstation = NewWorkstation("invalid/guid")
 
 				err := workstation.Validate()
 				Expect(err).To(HaveOccurred())
@@ -37,10 +32,22 @@ var _ = Describe("Workstation", func() {
 
 		for _, testCase := range []ValidatorErrorCase{
 			{"name",
-				Workstation{},
+				NewWorkstation(),
 			},
 			{"name",
-				Workstation{Name: "a b"},
+				NewWorkstation("a b"),
+			},
+			{"docker_image",
+				NewWorkstation("a", "blah"),
+			},
+			{"docker_image",
+				NewWorkstation("a", "http://example.com"),
+			},
+			{"docker_image",
+				NewWorkstation("a", "docker://ubuntu#trusty"),
+			},
+			{"docker_image",
+				NewWorkstation("a", "docker:///ubuntu:trusty"),
 			},
 		} {
 			testValidatorErrorCase(testCase)

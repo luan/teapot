@@ -37,10 +37,7 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workstation := models.Workstation{
-		Name:        workstationRequest.Name,
-		DockerImage: workstationRequest.DockerImage,
-	}
+	workstation := models.NewWorkstation(workstationRequest.Name, workstationRequest.DockerImage)
 
 	if err = workstation.Validate(); err != nil {
 		log.Error("invalid-workstation", err)
@@ -52,14 +49,14 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
-		ProcessGuid: workstationRequest.Name,
+		ProcessGuid: workstation.Name,
 		Domain:      "teapot",
 		Instances:   1,
 		Stack:       "lucid64",
-		RootFSPath:  workstationRequest.DockerImage,
+		RootFSPath:  workstation.DockerImage,
 		DiskMB:      128,
 		MemoryMB:    64,
-		LogGuid:     workstationRequest.Name,
+		LogGuid:     workstation.Name,
 		LogSource:   "TEAPOT-WORKSTATION",
 		Action: &diego_models.RunAction{
 			Path:      "/bin/sh",

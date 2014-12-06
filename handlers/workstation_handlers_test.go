@@ -34,11 +34,11 @@ var _ = Describe("WorkstationHandler", func() {
 	Describe("Create", func() {
 		validCreateRequest := teapot.WorkstationCreateRequest{
 			Name:        "workstation-name-1",
-			DockerImage: "docker://docker",
+			DockerImage: "docker:///docker",
 		}
 
 		invalidCreateRequest := teapot.WorkstationCreateRequest{
-			DockerImage: "docker://docker",
+			DockerImage: "docker:///docker",
 		}
 
 		Context("when everything succeeds", func() {

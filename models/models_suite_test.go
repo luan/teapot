@@ -1,6 +1,8 @@
 package models_test
 
 import (
+	"fmt"
+
 	"github.com/luan/teapot/models"
 
 	. "github.com/onsi/ginkgo"
@@ -18,7 +20,7 @@ func testValidatorErrorCase(testCase ValidatorErrorCase) {
 	message := testCase.Message
 	invalid := testCase.Validator
 
-	Context("when invalid", func() {
+	Context("when invalid with '"+fmt.Sprint(testCase.Validator)+"'", func() {
 		It("returns an error indicating '"+message+"'", func() {
 			err := invalid.Validate()
 			Expect(err).To(HaveOccurred())
