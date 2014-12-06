@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	diego_models "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/luan/teapot"
+	"github.com/luan/teapot/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -36,11 +37,16 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(workstationRequest.Name) <= 0 {
+	workstation := models.Workstation{
+		Name:        workstationRequest.Name,
+		DockerImage: workstationRequest.DockerImage,
+	}
+
+	if err = workstation.Validate(); err != nil {
 		log.Error("invalid-workstation", err)
 		writeJSONResponse(w, http.StatusTeapot, teapot.Error{
 			Type:    teapot.InvalidWorkstation,
-			Message: "",
+			Message: err.Error(),
 		})
 		return
 	}
@@ -55,7 +61,7 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		MemoryMB:    64,
 		LogGuid:     workstationRequest.Name,
 		LogSource:   "TEAPOT-WORKSTATION",
-		Action: &models.RunAction{
+		Action: &diego_models.RunAction{
 			Path:      "/bin/sh",
 			LogSource: "TEA",
 		},

@@ -67,7 +67,7 @@ var _ = Describe("WorkstationHandler", func() {
 			It("responds with a relevant error message", func() {
 				expectedBody, _ := json.Marshal(teapot.Error{
 					Type:    teapot.InvalidWorkstation,
-					Message: "",
+					Message: "Invalid field: name",
 				})
 				Expect(responseRecorder.Body.String()).To(Equal(string(expectedBody)))
 			})
