@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/receptor/fake_receptor"
 	"github.com/luan/teapot"
 	. "github.com/luan/teapot/handlers"
@@ -16,10 +17,9 @@ import (
 
 var _ = Describe("WorkstationHandler", func() {
 	var (
-		logger           lager.Logger
-		responseRecorder *httptest.ResponseRecorder
-		handler          *WorkstationHandler
-		// request            *http.Request
+		logger             lager.Logger
+		responseRecorder   *httptest.ResponseRecorder
+		handler            *WorkstationHandler
 		fakeReceptorClient *fake_receptor.FakeClient
 	)
 
@@ -52,6 +52,25 @@ var _ = Describe("WorkstationHandler", func() {
 
 			It("responds with an empty body", func() {
 				Expect(responseRecorder.Body.String()).To(Equal(""))
+			})
+		})
+
+		Context("when the workstation already exists", func() {
+			JustBeforeEach(func() {
+				fakeReceptorClient.GetDesiredLRPReturns(receptor.DesiredLRPResponse{ProcessGuid: validCreateRequest.Name}, nil)
+				handler.Create(responseRecorder, newTestRequest(validCreateRequest))
+			})
+
+			It("fails with a 400 BAD REQUEST", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusBadRequest))
+			})
+
+			It("responds with an an error including the validation details", func() {
+				expectedBody, _ := json.Marshal(receptor.Error{
+					Type:    teapot.DuplicateWorkstation,
+					Message: "workstation '" + validCreateRequest.Name + "' already exists",
+				})
+				Expect(responseRecorder.Body.String()).To(Equal(string(expectedBody)))
 			})
 		})
 

@@ -48,6 +48,16 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	desiredLRP, err := h.receptorClient.GetDesiredLRP(workstation.Name)
+	if err == nil && desiredLRP.ProcessGuid == workstation.Name {
+		log.Info("create-desired-lrp", lager.Data{"message": "trying to create duplicate workstation"})
+		writeJSONResponse(w, http.StatusBadRequest, teapot.Error{
+			Type:    teapot.DuplicateWorkstation,
+			Message: "workstation '" + workstation.Name + "' already exists",
+		})
+		return
+	}
+
 	err = h.receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 		ProcessGuid: workstation.Name,
 		Domain:      "teapot",

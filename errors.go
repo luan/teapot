@@ -10,7 +10,8 @@ func (err Error) Error() string {
 }
 
 const (
-	InvalidWorkstation = "InvalidWorkstation"
+	InvalidWorkstation   = "InvalidWorkstation"
+	DuplicateWorkstation = "DuplicateWorkstation"
 
 	InvalidJSON = "InvalidJSON"
 
