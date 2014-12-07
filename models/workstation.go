@@ -25,12 +25,12 @@ func NewWorkstation(arguments ...string) Workstation {
 func (workstation Workstation) Validate() error {
 	var validationError ValidationError
 
-	matched, err := regexp.MatchString("^[\\w-]+$", workstation.Name)
+	matched, err := regexp.MatchString("^[\\w-.]+$", workstation.Name)
 	if err != nil || !matched {
 		validationError = append(validationError, ErrInvalidField{"name"})
 	}
 
-	matched, err = regexp.MatchString("^docker:///[\\w-]+#?[\\w-]*$", workstation.DockerImage)
+	matched, err = regexp.MatchString("^docker:///[\\w-.]+#?[\\w-.]*$", workstation.DockerImage)
 	if err != nil || !matched {
 		validationError = append(validationError, ErrInvalidField{"docker_image"})
 	}

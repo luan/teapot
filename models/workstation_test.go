@@ -20,7 +20,7 @@ var _ = Describe("Workstation", func() {
 	Describe("Validate", func() {
 		Context("when the workstation has a valid name and docker_image", func() {
 			It("is valid", func() {
-				workstation = NewWorkstation("w_-1", "docker:///a#b")
+				workstation = NewWorkstation("w_-1.1", "docker:///a#b-1.1")
 
 				err := workstation.Validate()
 				Expect(err).NotTo(HaveOccurred())
