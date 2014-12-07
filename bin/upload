@@ -1,0 +1,11 @@
+#!/bin/bash
+
+pushd $GOPATH/src/github.com/luan/teapot
+
+go get -v ./...
+GOOS=linux go build ./cmd/teapot
+tar czvf teapot.tar.gz teapot
+s3cmd put teapot.tar.gz s3://tiego-artifacts/
+rm -f teapot teapot.tar.gz
+
+popd

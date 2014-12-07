@@ -35,7 +35,7 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 
 	err = m.receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 		ProcessGuid: workstation.Name,
-		Domain:      "teapot",
+		Domain:      "tiego",
 		Instances:   1,
 		Stack:       "lucid64",
 		RootFSPath:  workstation.DockerImage,

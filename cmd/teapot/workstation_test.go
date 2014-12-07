@@ -42,7 +42,7 @@ var _ = Describe("Workstation API", func() {
 					ghttp.VerifyRequest(createDesiredLRPRoute.Method, createDesiredLRPRoute.Path),
 					ghttp.VerifyJSONRepresenting(receptor.DesiredLRPCreateRequest{
 						ProcessGuid: "my-workstation",
-						Domain:      "teapot",
+						Domain:      "tiego",
 						Instances:   1,
 						Stack:       "lucid64",
 						RootFSPath:  "docker:///debian#wheezy",
