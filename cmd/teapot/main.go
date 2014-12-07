@@ -7,6 +7,7 @@ import (
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/luan/teapot/handlers"
+	"github.com/luan/teapot/managers"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -29,7 +30,8 @@ func main() {
 	logger := cf_lager.New("teapot")
 	logger.Info("starting")
 	receptorClient := receptor.NewClient(*receptorAddress)
-	handler := handlers.New(receptorClient, logger)
+	workstationManager := managers.NewWorkstationManager(receptorClient, logger)
+	handler := handlers.New(workstationManager, logger)
 
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},

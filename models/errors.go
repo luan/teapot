@@ -10,6 +10,14 @@ func (err ErrInvalidField) Error() string {
 	return "Invalid field: " + err.Field
 }
 
+type ErrDuplicateField struct {
+	Field string
+}
+
+func (err ErrDuplicateField) Error() string {
+	return "Unique constraint failed for: " + err.Field
+}
+
 type ErrInvalidModification struct {
 	InvalidField string
 }

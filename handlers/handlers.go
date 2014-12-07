@@ -3,14 +3,14 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/luan/teapot"
+	"github.com/luan/teapot/managers"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
-func New(receptorClient receptor.Client, logger lager.Logger) http.Handler {
-	workstationHandler := NewWorkstationHandler(receptorClient, logger)
+func New(workstationManager managers.WorkstationManager, logger lager.Logger) http.Handler {
+	workstationHandler := NewWorkstationHandler(workstationManager, logger)
 
 	actions := rata.Handlers{
 		// Workstations

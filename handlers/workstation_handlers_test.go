@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/receptor/fake_receptor"
 	"github.com/luan/teapot"
 	. "github.com/luan/teapot/handlers"
+	"github.com/luan/teapot/managers"
 	"github.com/pivotal-golang/lager"
 
 	. "github.com/onsi/ginkgo"
@@ -21,6 +22,7 @@ var _ = Describe("WorkstationHandler", func() {
 		responseRecorder   *httptest.ResponseRecorder
 		handler            *WorkstationHandler
 		fakeReceptorClient *fake_receptor.FakeClient
+		manager            managers.WorkstationManager
 	)
 
 	BeforeEach(func() {
@@ -28,7 +30,8 @@ var _ = Describe("WorkstationHandler", func() {
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		responseRecorder = httptest.NewRecorder()
 		fakeReceptorClient = new(fake_receptor.FakeClient)
-		handler = NewWorkstationHandler(fakeReceptorClient, logger)
+		manager = managers.NewWorkstationManager(fakeReceptorClient, logger)
+		handler = NewWorkstationHandler(manager, logger)
 	})
 
 	Describe("Create", func() {
@@ -67,8 +70,8 @@ var _ = Describe("WorkstationHandler", func() {
 
 			It("responds with an an error including the validation details", func() {
 				expectedBody, _ := json.Marshal(receptor.Error{
-					Type:    teapot.DuplicateWorkstation,
-					Message: "workstation '" + validCreateRequest.Name + "' already exists",
+					Type:    teapot.InvalidWorkstation,
+					Message: "Unique constraint failed for: name",
 				})
 				Expect(responseRecorder.Body.String()).To(Equal(string(expectedBody)))
 			})
@@ -79,8 +82,8 @@ var _ = Describe("WorkstationHandler", func() {
 				handler.Create(responseRecorder, newTestRequest(invalidCreateRequest))
 			})
 
-			It("responds with 418 I'M A TEAPOT", func() {
-				Expect(responseRecorder.Code).To(Equal(http.StatusTeapot))
+			It("responds with 400 BAD REQUEST", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusBadRequest))
 			})
 
 			It("responds with a relevant error message", func() {

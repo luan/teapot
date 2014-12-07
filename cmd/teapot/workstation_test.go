@@ -1,10 +1,13 @@
 package main_test
 
 import (
+	"net/http"
+
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/luan/teapot"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/rata"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,8 +28,16 @@ var _ = Describe("Workstation API", func() {
 		var createErr error
 
 		BeforeEach(func() {
+			workstationToCreate = newValidWorkstationCreateRequest()
+
 			createDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.CreateDesiredLRPRoute)
+			getDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.GetDesiredLRPRoute)
+			getDesiredLRPPath, _ := getDesiredLRPRoute.CreatePath(rata.Params{"process_guid": workstationToCreate.Name})
 			receptorServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(getDesiredLRPRoute.Method, getDesiredLRPPath),
+					ghttp.RespondWith(http.StatusNotFound, ""),
+				),
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest(createDesiredLRPRoute.Method, createDesiredLRPRoute.Path),
 					ghttp.VerifyJSONRepresenting(receptor.DesiredLRPCreateRequest{
@@ -47,7 +58,6 @@ var _ = Describe("Workstation API", func() {
 				),
 			)
 
-			workstationToCreate = newValidWorkstationCreateRequest()
 			createErr = client.CreateWorkstation(workstationToCreate)
 		})
 
@@ -56,7 +66,7 @@ var _ = Describe("Workstation API", func() {
 		})
 
 		It("requests an LRP from the receptor", func() {
-			Expect(receptorServer.ReceivedRequests()).To(HaveLen(1))
+			Expect(receptorServer.ReceivedRequests()).To(HaveLen(2))
 		})
 	})
 })
