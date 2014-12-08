@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	spyDownloadUrl string = "http://file_server.service.dc1.consul:8080/v1/static/docker-circus/docker-circus.tgz"
+	spyDownloadURL    string = "http://file_server.service.dc1.consul:8080/v1/static/docker-circus/docker-circus.tgz"
+	teapotDownloadURL string = "https://tiego-artifacts.s3.amazonaws.com/teapot.tar.gz"
 )
 
 var receptorAddr string
@@ -21,20 +22,26 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 	err := client.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 		ProcessGuid: "teapot",
 		Domain:      "teapot",
-		RootFSPath:  "docker:///luan/teapot",
+		RootFSPath:  "docker:///busybox#ubuntu-14.04",
 		Instances:   1,
 		Stack:       "lucid64",
-		Setup: &models.DownloadAction{
-			From: spyDownloadUrl,
-			To:   "/tmp",
-		},
+		Setup: &models.ParallelAction{[]models.Action{
+			&models.DownloadAction{
+				From: teapotDownloadURL,
+				To:   "/tmp",
+			},
+			&models.DownloadAction{
+				From: spyDownloadURL,
+				To:   "/tmp",
+			},
+		}, ""},
 		Action: &models.RunAction{
-			Path: "/teapot",
+			Path: "/tmp/teapot",
 			Args: []string{
 				"-address", "0.0.0.0:8080",
 				"-receptorAddress", receptorAddr,
 			},
-			LogSource: "TEAPOT-SERVER",
+			LogSource: "TEAPOT",
 		},
 		Monitor: &models.RunAction{
 			Path:      "/tmp/spy",
