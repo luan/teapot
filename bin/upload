@@ -2,10 +2,14 @@
 
 pushd $GOPATH/src/github.com/luan/teapot
 
+BUCKET=$1
+
+[ -z "$BUCKET" ] && BUCKET=tiego-artifacts
+
 go get -v ./...
 GOOS=linux go build ./cmd/teapot
 tar czvf teapot.tar.gz teapot
-s3cmd put teapot.tar.gz s3://tiego-artifacts/
+s3cmd put teapot.tar.gz s3://$BUCKET/
 rm -f teapot teapot.tar.gz
 
 popd

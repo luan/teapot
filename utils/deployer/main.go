@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -9,14 +10,20 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
+var bucket = flag.String(
+	"bucket",
+	"tiego-artifacts",
+	"The bucket where teapot will be downloaded from.",
+)
+
 const (
-	spyDownloadURL    string = "http://file_server.service.dc1.consul:8080/v1/static/docker-circus/docker-circus.tgz"
-	teapotDownloadURL string = "https://tiego-artifacts.s3.amazonaws.com/teapot.tar.gz"
+	spyDownloadURL string = "http://file_server.service.dc1.consul:8080/v1/static/docker-circus/docker-circus.tgz"
 )
 
 var receptorAddr string
 
 func DockerTeapot(client receptor.Client, routeRoot string) error {
+	teapotDownloadURL := fmt.Sprintf("https://%s.s3.amazonaws.com/teapot.tar.gz", *bucket)
 	client.DeleteDesiredLRP("teapot")
 	route := fmt.Sprintf("teapot.%s", routeRoot)
 	err := client.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
@@ -71,6 +78,7 @@ func main() {
 		fmt.Println("No RECEPTOR set")
 		os.Exit(1)
 	}
+	flag.Parse()
 
 	client := receptor.NewClient(receptorAddr)
 	routeRoot := strings.Split(receptorAddr, "receptor.")[1]
