@@ -69,6 +69,32 @@ var _ = Describe("Workstation API", func() {
 			Expect(receptorServer.ReceivedRequests()).To(HaveLen(2))
 		})
 	})
+
+	Describe("DELETE /workstatations/:name", func() {
+		var deleteErr error
+
+		BeforeEach(func() {
+			workstationToDelete := "w1"
+			deleteDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.DeleteDesiredLRPRoute)
+			deleteDesiredLRPPath, _ := deleteDesiredLRPRoute.CreatePath(rata.Params{"process_guid": workstationToDelete})
+			receptorServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(deleteDesiredLRPRoute.Method, deleteDesiredLRPPath),
+					ghttp.RespondWith(http.StatusNoContent, ""),
+				),
+			)
+
+			deleteErr = client.DeleteWorkstation(workstationToDelete)
+		})
+
+		It("responds without an error", func() {
+			Expect(deleteErr).NotTo(HaveOccurred())
+		})
+
+		It("requests an LRP from the receptor", func() {
+			Expect(receptorServer.ReceivedRequests()).To(HaveLen(1))
+		})
+	})
 })
 
 func newValidWorkstationCreateRequest() teapot.WorkstationCreateRequest {

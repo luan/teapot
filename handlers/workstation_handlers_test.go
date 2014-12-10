@@ -2,8 +2,10 @@ package handlers_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/receptor/fake_receptor"
@@ -113,6 +115,40 @@ var _ = Describe("WorkstationHandler", func() {
 					Message: err.Error(),
 				})
 				Expect(responseRecorder.Body.String()).To(Equal(string(expectedBody)))
+			})
+		})
+	})
+
+	Describe("Delete", func() {
+		var req *http.Request
+
+		BeforeEach(func() {
+			req = newTestRequest("")
+			req.Form = url.Values{":process_guid": []string{"workstation-name"}}
+		})
+
+		Context("when everything succeeds", func() {
+			BeforeEach(func() {
+				handler.Delete(responseRecorder, req)
+			})
+
+			It("responds with 204 NO CONTENT", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusNoContent))
+			})
+
+			It("responds with an empty body", func() {
+				Expect(responseRecorder.Body.String()).To(Equal(""))
+			})
+		})
+
+		Context("when the workstation doesn't exists", func() {
+			BeforeEach(func() {
+				fakeReceptorClient.DeleteDesiredLRPReturns(errors.New("receptor error"))
+				handler.Delete(responseRecorder, req)
+			})
+
+			It("fails with a 404 NOT FOUND", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
 			})
 		})
 	})

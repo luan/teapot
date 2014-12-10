@@ -11,6 +11,7 @@ import (
 
 type Client interface {
 	CreateWorkstation(request WorkstationCreateRequest) error
+	DeleteWorkstation(name string) error
 }
 
 type client struct {
@@ -27,6 +28,10 @@ func NewClient(url string) Client {
 
 func (c *client) CreateWorkstation(request WorkstationCreateRequest) error {
 	return c.doRequest(CreateWorkstationRoute, nil, nil, request, nil)
+}
+
+func (c *client) DeleteWorkstation(name string) error {
+	return c.doRequest(DeleteWorkstationRoute, rata.Params{"name": name}, nil, nil, nil)
 }
 
 func (c *client) doRequest(requestName string, params rata.Params, queryParams url.Values, request, response interface{}) error {

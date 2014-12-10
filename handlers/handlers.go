@@ -15,6 +15,7 @@ func New(workstationManager managers.WorkstationManager, logger lager.Logger) ht
 	actions := rata.Handlers{
 		// Workstations
 		teapot.CreateWorkstationRoute: route(workstationHandler.Create),
+		teapot.DeleteWorkstationRoute: route(workstationHandler.Delete),
 	}
 
 	handler, err := rata.NewRouter(teapot.Routes, actions)

@@ -8,7 +8,8 @@ import (
 )
 
 type WorkstationManager interface {
-	Create(models.Workstation) error
+	Create(workstation models.Workstation) error
+	Delete(name string) error
 }
 
 type workstationManager struct {
@@ -50,4 +51,8 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 	})
 
 	return err
+}
+
+func (m *workstationManager) Delete(name string) error {
+	return m.receptorClient.DeleteDesiredLRP(name)
 }

@@ -23,7 +23,7 @@ func NewWorkstationHandler(manager managers.WorkstationManager, logger lager.Log
 }
 
 func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
-	log := h.logger.Session("create-workstation-handler")
+	log := h.logger.Session("create")
 	workstationRequest := teapot.WorkstationCreateRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&workstationRequest)
@@ -61,4 +61,22 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	log.Info("created", lager.Data{"workstation-name": workstation.Name})
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *WorkstationHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue(":name")
+	log := h.logger.Session("delete", lager.Data{
+		"Name": name,
+	})
+
+	err := h.manager.Delete(name)
+	if err != nil {
+		log.Info("delete-failed", lager.Data{"workstation-name": name})
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	log.Info("deleted", lager.Data{"workstation-name": name})
+
+	w.WriteHeader(http.StatusNoContent)
 }
