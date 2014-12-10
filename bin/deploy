@@ -7,7 +7,7 @@ pushd $GOPATH/src/github.com/luan/teapot
 
 BUCKET=$1
 [ -z "$BUCKET" ] && BUCKET=tiego-artifacts
-filename=teapot-builds/$(ls tmp/builds/teapot*.tgz | head -1 | xargs basename)
+filename=teapot-builds/$(ls -t tmp/builds/teapot*.tgz | head -1 | xargs basename)
 
 echo -e "$green===> deploying $filename to RECEPTOR: ${RECEPTOR}...$reset"
 go run ./utils/deployer/main.go -bucket=$BUCKET -filename=$filename

@@ -9,7 +9,7 @@ BUCKET=$1
 
 [ -z "$BUCKET" ] && BUCKET=tiego-artifacts
 
-filename=$(ls tmp/builds/teapot*.tgz | head -1)
+filename=$(ls -t tmp/builds/teapot*.tgz | head -1)
 echo -e "$green===> uploading $filename to S3 bucket: ${BUCKET}...$reset"
 s3cmd put $filename s3://$BUCKET/teapot-builds/
 
