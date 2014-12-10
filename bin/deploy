@@ -1,9 +1,15 @@
 #!/bin/bash
 
+green="\033[32m\033[1m"
+reset="\033[0m"
+
 pushd $GOPATH/src/github.com/luan/teapot
 
 BUCKET=$1
 [ -z "$BUCKET" ] && BUCKET=tiego-artifacts
-go run ./utils/deployer/main.go -bucket=$BUCKET
+filename=teapot-builds/$(ls tmp/builds/teapot*.tgz | head -1 | xargs basename)
+
+echo -e "$green===> deploying $filename to RECEPTOR: ${RECEPTOR}...$reset"
+go run ./utils/deployer/main.go -bucket=$BUCKET -filename=$filename
 
 popd

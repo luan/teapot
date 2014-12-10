@@ -16,6 +16,12 @@ var bucket = flag.String(
 	"The bucket where teapot will be downloaded from.",
 )
 
+var filename = flag.String(
+	"filename",
+	"",
+	"the filename to download from the bucket",
+)
+
 const (
 	spyDownloadURL string = "http://file_server.service.dc1.consul:8080/v1/static/docker-circus/docker-circus.tgz"
 )
@@ -23,7 +29,8 @@ const (
 var receptorAddr string
 
 func DockerTeapot(client receptor.Client, routeRoot string) error {
-	teapotDownloadURL := fmt.Sprintf("https://%s.s3.amazonaws.com/teapot.tar.gz", *bucket)
+	teapotDownloadURL := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", *bucket, *filename)
+	fmt.Println(teapotDownloadURL)
 	client.DeleteDesiredLRP("teapot")
 	route := fmt.Sprintf("teapot.%s", routeRoot)
 	err := client.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{

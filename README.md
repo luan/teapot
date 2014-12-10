@@ -21,7 +21,7 @@ To run the Teapot API **on** [Diego Edge](https://github.com/pivotal-cf-experime
 ```bash
 cd $GOPATH/src/github.com/luan/teapot
 export RECEPTOR=http://receptor.192.168.11.11.xip.io/
-bin/deploy # optionally provide a bucket name, default: tiego-artifacts
+bin/dance # optionally provide a bucket name, default: tiego-artifacts
 ```
 
 You can replace the receptor URL with your receptor for other types of deployments, receptors with Basic Auth enabled should work out of the box with something like `http://user:password@receptor.example.com`.
@@ -47,8 +47,12 @@ s3cmd --configure # enter credentials Amazon S3 enabled account
 ### Build & Upload
 
 ```bash
+bin/build
 bin/upload # optionally provide a bucket name, default: tiego-artifacts
+bin/deploy
 ```
+
+Or you can use `bin/dance [BUCKET]` for convenicence
 
 After this you can deploy Teapot using `bin/deploy`, as explained above.
 

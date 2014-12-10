@@ -1,15 +1,16 @@
 #!/bin/bash
 
+green="\033[32m\033[1m"
+reset="\033[0m"
+
 pushd $GOPATH/src/github.com/luan/teapot
 
 BUCKET=$1
 
 [ -z "$BUCKET" ] && BUCKET=tiego-artifacts
 
-go get -v ./...
-GOOS=linux go build ./cmd/teapot
-tar czvf teapot.tar.gz teapot
-s3cmd put teapot.tar.gz s3://$BUCKET/
-rm -f teapot teapot.tar.gz
+filename=$(ls tmp/builds/teapot*.tgz | head -1)
+echo -e "$green===> uploading $filename to S3 bucket: ${BUCKET}...$reset"
+s3cmd put $filename s3://$BUCKET/teapot-builds/
 
 popd
