@@ -1,0 +1,64 @@
+{
+	"ImportPath": "github.com/luan/teapot",
+	"GoVersion": "go1.3.3",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
+			"Rev": "5c5c9e5ec21508be656c201ec53c68cd882d36fb"
+		},
+		{
+			"ImportPath": "github.com/bmizerany/pat",
+			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/cf-lager",
+			"Rev": "94308c799cf61ac0818667ddcc25046c8c5659d1"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/receptor",
+			"Rev": "40e821eff2fc7a2642756f798f3338f6c101e5e2"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
+			"Rev": "a39ffa054f210dc9a24539108d6898e3b549419e"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/dropsonde",
+			"Rev": "eeb0380122486138057a6ef5552d3bd075a5f2af"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gosteno",
+			"Comment": "scotty_09012012-41-g5c1406e",
+			"Rev": "5c1406e9ea0ab919f92e1b194169565def41147b"
+		},
+		{
+			"ImportPath": "github.com/nu7hatch/gouuid",
+			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+		},
+		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.1.0-29-g18c73cf",
+			"Rev": "18c73cfeca1095f984c036a04c42ac0b08048685"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Comment": "v1.0-26-gdc751ce",
+			"Rev": "dc751ce5f266d83c26fae5c0a9093973b29cb61d"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/lager",
+			"Rev": "1baba58607e680b5659dddcad70d53abe5af039e"
+		},
+		{
+			"ImportPath": "github.com/tedsuo/ifrit",
+			"Rev": "7b553b1cf44cbef25f033876ffcec465c631f0b7"
+		},
+		{
+			"ImportPath": "github.com/tedsuo/rata",
+			"Rev": "21daae5077daf2f13c6e5d4d2524ee29fe4e4cf0"
+		}
+	]
+}
