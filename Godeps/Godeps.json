@@ -35,6 +35,10 @@
 			"Rev": "5c1406e9ea0ab919f92e1b194169565def41147b"
 		},
 		{
+			"ImportPath": "github.com/goji/httpauth",
+			"Rev": "5279c8de0d24f35f88205340317b30b31084892c"
+		},
+		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
 			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},

@@ -18,6 +18,11 @@ import (
 	"time"
 )
 
+const (
+	username = "username"
+	password = "password"
+)
+
 var logger lager.Logger
 
 var teapotBinPath string
@@ -60,7 +65,7 @@ var _ = BeforeEach(func() {
 	teapotURL := &url.URL{
 		Scheme: "http",
 		Host:   teapotAddress,
-		// User:   url.UserPassword(username, password),
+		User:   url.UserPassword(username, password),
 	}
 
 	client = teapot.NewClient(teapotURL.String())
@@ -68,6 +73,8 @@ var _ = BeforeEach(func() {
 	teapotArgs = testrunner.Args{
 		Address:         teapotAddress,
 		ReceptorAddress: receptorServer.URL(),
+		Username:        username,
+		Password:        password,
 	}
 	teapotRunner = testrunner.New(teapotBinPath, teapotArgs)
 })

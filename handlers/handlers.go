@@ -9,7 +9,7 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-func New(workstationManager managers.WorkstationManager, logger lager.Logger) http.Handler {
+func New(workstationManager managers.WorkstationManager, logger lager.Logger, username, password string) http.Handler {
 	workstationHandler := NewWorkstationHandler(workstationManager, logger)
 
 	actions := rata.Handlers{
@@ -21,6 +21,10 @@ func New(workstationManager managers.WorkstationManager, logger lager.Logger) ht
 	handler, err := rata.NewRouter(teapot.Routes, actions)
 	if err != nil {
 		panic("unable to create router: " + err.Error())
+	}
+
+	if username != "" {
+		handler = BasicAuthWrap(handler, username, password)
 	}
 
 	handler = LogWrap(handler, logger)

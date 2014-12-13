@@ -29,6 +29,18 @@ var receptorAddress = flag.String(
 	"The url for the receptor.",
 )
 
+var username = flag.String(
+	"username",
+	"",
+	"username for basic auth, enables basic auth if set",
+)
+
+var password = flag.String(
+	"password",
+	"",
+	"password for basic auth",
+)
+
 func PrintUsageAndExit() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	flag.PrintDefaults()
@@ -54,7 +66,7 @@ func main() {
 	logger.Info("starting", lager.Data{"listen_address": *serverAddress, "receptor_address": *receptorAddress})
 	receptorClient := receptor.NewClient(*receptorAddress)
 	workstationManager := managers.NewWorkstationManager(receptorClient, logger)
-	handler := handlers.New(workstationManager, logger)
+	handler := handlers.New(workstationManager, logger, *username, *password)
 
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},

@@ -9,12 +9,16 @@ import (
 type Args struct {
 	Address         string
 	ReceptorAddress string
+	Username        string
+	Password        string
 }
 
 func (args Args) ArgSlice() []string {
 	return []string{
 		"-address", args.Address,
 		"-receptorAddress", args.ReceptorAddress,
+		"-username", args.Username,
+		"-password", args.Password,
 	}
 }
 
