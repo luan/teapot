@@ -2,9 +2,13 @@ package main_test
 
 import (
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/gorilla/websocket"
 	"github.com/luan/teapot"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/rata"
@@ -92,6 +96,78 @@ var _ = Describe("Workstation API", func() {
 		})
 
 		It("requests an LRP from the receptor", func() {
+			Expect(receptorServer.ReceivedRequests()).To(HaveLen(1))
+		})
+	})
+
+	Describe("GET /workstatations/:name/attach", func() {
+		var (
+			attachErr error
+			teaServer *ghttp.Server
+			ws        *websocket.Conn
+		)
+
+		BeforeEach(func() {
+			teaServer = ghttp.NewServer()
+			teaURL, _ := url.Parse(teaServer.URL())
+			teaHostPort := strings.Split(teaURL.Host, ":")
+			teaHost := teaHostPort[0]
+			teaPort, _ := strconv.Atoi(teaHostPort[1])
+
+			workstationToAttach := "w1"
+			actualLRPsByProcessGuidRoute, _ := receptor.Routes.FindRouteByName(receptor.ActualLRPsByProcessGuidRoute)
+			actualLRPsByProcessGuidPath, _ := actualLRPsByProcessGuidRoute.CreatePath(rata.Params{"process_guid": workstationToAttach})
+			receptorServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(actualLRPsByProcessGuidRoute.Method, actualLRPsByProcessGuidPath),
+					ghttp.RespondWithJSONEncoded(http.StatusOK, []receptor.ActualLRPResponse{
+						{
+							Host:  teaHost,
+							Ports: []receptor.PortMapping{{HostPort: uint32(teaPort)}},
+						},
+					}),
+				),
+			)
+			teaServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/shell"),
+					func(w http.ResponseWriter, r *http.Request) {
+						upgrader := websocket.Upgrader{
+							CheckOrigin: func(r *http.Request) bool { return true },
+						}
+						ws, err := upgrader.Upgrade(w, r, nil)
+						if err != nil {
+							panic(err)
+						}
+						defer ws.Close()
+						_, m, err := ws.ReadMessage()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(string(m)).To(Equal("hello"))
+						ws.WriteMessage(websocket.TextMessage, []byte("world"))
+					},
+				),
+			)
+
+			ws, attachErr = client.AttachWorkstation(workstationToAttach)
+		})
+
+		AfterEach(func() {
+			teaServer.Close()
+		})
+
+		It("responds without an error", func() {
+			Expect(attachErr).NotTo(HaveOccurred())
+		})
+
+		It("proxies to the TEA API", func() {
+			Expect(ws).NotTo(BeNil())
+			ws.WriteMessage(websocket.TextMessage, []byte("hello"))
+			_, m, err := ws.ReadMessage()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(m)).To(Equal("world"))
+		})
+
+		It("requests an actual LRP from the receptor", func() {
 			Expect(receptorServer.ReceivedRequests()).To(HaveLen(1))
 		})
 	})

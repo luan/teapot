@@ -152,4 +152,34 @@ var _ = Describe("WorkstationHandler", func() {
 			})
 		})
 	})
+
+	Describe("Attach", func() {
+		var req *http.Request
+
+		BeforeEach(func() {
+			req = newTestRequest("")
+			req.Form = url.Values{":process_guid": []string{"workstation-name"}}
+		})
+
+		Context("when the workstation doesn't exists", func() {
+			BeforeEach(func() {
+				handler.Attach(responseRecorder, req)
+			})
+
+			It("fails with a 404 NOT FOUND", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
+			})
+		})
+
+		Context("when the receptor returns an error", func() {
+			BeforeEach(func() {
+				fakeReceptorClient.ActualLRPsByProcessGuidReturns(nil, errors.New("receptor error"))
+				handler.Attach(responseRecorder, req)
+			})
+
+			It("fails with a 404 NOT FOUND", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
+			})
+		})
+	})
 })

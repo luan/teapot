@@ -10,6 +10,7 @@ import (
 type WorkstationManager interface {
 	Create(workstation models.Workstation) error
 	Delete(name string) error
+	Fetch(name string) ([]receptor.ActualLRPResponse, error)
 }
 
 type workstationManager struct {
@@ -65,4 +66,8 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 
 func (m *workstationManager) Delete(name string) error {
 	return m.receptorClient.DeleteDesiredLRP(name)
+}
+
+func (m *workstationManager) Fetch(name string) ([]receptor.ActualLRPResponse, error) {
+	return m.receptorClient.ActualLRPsByProcessGuid(name)
 }

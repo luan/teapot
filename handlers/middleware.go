@@ -18,9 +18,9 @@ func LogWrap(handler http.Handler, logger lager.Logger) http.HandlerFunc {
 			"request": r.URL.String(),
 		})
 
-		requestLog.Info("serving")
+		requestLog.Info("serving", lager.Data{"request-headers": r.Header})
 		handler.ServeHTTP(w, r)
-		requestLog.Info("done")
+		requestLog.Info("done", lager.Data{"response-headers": w.Header()})
 	}
 }
 

@@ -39,6 +39,10 @@
 			"Rev": "ad1638674d78c00d2d2b01af7d8ed8e2a3bab582"
 		},
 		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "9007e29a7c93fc3dcebbdbf742ce0efaf19e6510"
+		},
+		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
 			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
