@@ -41,9 +41,10 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	err = h.manager.Create(workstation)
 
 	if err != nil {
-		switch err.(type) {
+		switch t := err.(type) {
 		default:
-			log.Error("unknown-error", err)
+			log.Error("unknown-error", err, lager.Data{"type": t})
+			log.Info("did you set RECEPTOR correctly?")
 			writeJSONResponse(w, http.StatusInternalServerError, teapot.Error{
 				Type:    teapot.UnknownError,
 				Message: err.Error(),

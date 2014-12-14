@@ -25,6 +25,8 @@ func NewWorkstationManager(receptorClient receptor.Client, logger lager.Logger) 
 }
 
 func (m *workstationManager) Create(workstation models.Workstation) error {
+	log := m.logger.Session("workstation-manager-create", lager.Data{"workstation": workstation})
+
 	if err := workstation.Validate(); err != nil {
 		return err
 	}
@@ -34,7 +36,7 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 		return models.ValidationError{models.ErrDuplicateField{"name"}}
 	}
 
-	err = m.receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
+	lrpRequest := receptor.DesiredLRPCreateRequest{
 		ProcessGuid: workstation.Name,
 		Domain:      "tiego",
 		Instances:   1,
@@ -48,7 +50,15 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 			Path:      "/bin/sh",
 			LogSource: "TEA",
 		},
-	})
+	}
+
+	log.Debug("requesting-lrp", lager.Data{"lrpRequest": lrpRequest})
+	err = m.receptorClient.CreateDesiredLRP(lrpRequest)
+	if err != nil {
+		log.Debug("request-failed", lager.Data{"error": err})
+	} else {
+		log.Debug("request-suceeded")
+	}
 
 	return err
 }
