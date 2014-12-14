@@ -3,7 +3,6 @@ package models
 type ActualLRPState string
 
 const (
-	ActualLRPStateInvalid   ActualLRPState = "INVALID"
 	ActualLRPStateUnclaimed ActualLRPState = "UNCLAIMED"
 	ActualLRPStateClaimed   ActualLRPState = "CLAIMED"
 	ActualLRPStateRunning   ActualLRPState = "RUNNING"
@@ -51,6 +50,46 @@ func NewActualLRP(
 	return lrp
 }
 
+func (actual ActualLRP) IsEquivalentTo(other ActualLRP) bool {
+	return actual.CellID == other.CellID &&
+		actual.Domain == other.Domain &&
+		actual.Index == other.Index &&
+		actual.InstanceGuid == other.InstanceGuid &&
+		actual.ProcessGuid == other.ProcessGuid &&
+		actual.State == other.State
+}
+
+func (before ActualLRP) AllowsTransitionTo(after ActualLRP) bool {
+	if before.ProcessGuid != after.ProcessGuid {
+		return false
+	}
+
+	if before.InstanceGuid != after.InstanceGuid &&
+		!(before.State != ActualLRPStateRunning && after.State == ActualLRPStateRunning) {
+		return false
+	}
+
+	if before.Index != after.Index {
+		return false
+	}
+
+	if before.Domain != after.Domain {
+		return false
+	}
+
+	if before.State == ActualLRPStateClaimed && after.State == ActualLRPStateRunning {
+		return true
+	}
+
+	if (before.State == ActualLRPStateClaimed || before.State == ActualLRPStateRunning) &&
+		(after.State == ActualLRPStateClaimed || after.State == ActualLRPStateRunning) &&
+		(before.CellID != after.CellID) {
+		return false
+	}
+
+	return true
+}
+
 func (actual ActualLRP) Validate() error {
 	var validationError ValidationError
 
@@ -62,19 +101,15 @@ func (actual ActualLRP) Validate() error {
 		validationError = append(validationError, ErrInvalidField{"domain"})
 	}
 
-	if actual.State == ActualLRPStateUnclaimed {
-		if actual.InstanceGuid != "" {
-			validationError = append(validationError, ErrInvalidField{"instance_guid"})
-		}
+	if actual.InstanceGuid == "" {
+		validationError = append(validationError, ErrInvalidField{"instance_guid"})
+	}
 
+	if actual.State == ActualLRPStateUnclaimed {
 		if actual.CellID != "" {
 			validationError = append(validationError, ErrInvalidField{"cell_id"})
 		}
 	} else {
-		if actual.InstanceGuid == "" {
-			validationError = append(validationError, ErrInvalidField{"instance_guid"})
-		}
-
 		if actual.CellID == "" {
 			validationError = append(validationError, ErrInvalidField{"cell_id"})
 		}

@@ -400,7 +400,7 @@ var _ = Describe("TaskHandler", func() {
 					Action: &models.RunAction{
 						Path: "the-path",
 					},
-					State: models.TaskStateClaimed,
+					State: models.TaskStateRunning,
 				}
 
 				fakeBBS.TaskByGuidReturns(task, nil)
@@ -409,7 +409,7 @@ var _ = Describe("TaskHandler", func() {
 					TaskGuid: task.TaskGuid,
 					Domain:   task.Domain,
 					Action:   task.Action,
-					State:    receptor.TaskStateClaimed,
+					State:    receptor.TaskStateRunning,
 				}
 			})
 
@@ -476,7 +476,7 @@ var _ = Describe("TaskHandler", func() {
 
 		Context("when the task cannot be found in the BBS", func() {
 			BeforeEach(func() {
-				fakeBBS.CancelTaskReturns(bbserrors.ErrTaskNotFound)
+				fakeBBS.CancelTaskReturns(bbserrors.ErrStoreResourceNotFound)
 			})
 
 			It("responds with a 404 NOT FOUND", func() {

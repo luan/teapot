@@ -19,11 +19,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/receptor",
-			"Rev": "40e821eff2fc7a2642756f798f3338f6c101e5e2"
+			"Rev": "60f720f9034a75eb39cb45a1abde60916432ace5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "a39ffa054f210dc9a24539108d6898e3b549419e"
+			"Rev": "3fc54a5908b00fcb91cc9f2fa917ee87d65f8dcf"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/dropsonde",
@@ -36,7 +36,7 @@
 		},
 		{
 			"ImportPath": "github.com/goji/httpauth",
-			"Rev": "5279c8de0d24f35f88205340317b30b31084892c"
+			"Rev": "ad1638674d78c00d2d2b01af7d8ed8e2a3bab582"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -44,8 +44,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0-29-g18c73cf",
-			"Rev": "18c73cfeca1095f984c036a04c42ac0b08048685"
+			"Comment": "v1.1.0-32-g291f28e",
+			"Rev": "291f28e66dd277f35d3635990a7448759645c7e7"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -54,7 +54,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "1baba58607e680b5659dddcad70d53abe5af039e"
+			"Rev": "ce9effb2d1062e2d81333f942df0549706901b1b"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
@@ -62,7 +62,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",
-			"Rev": "21daae5077daf2f13c6e5d4d2524ee29fe4e4cf0"
+			"Rev": "6197c97c67a03bfd4d6977a3b6060d6c6b3d581f"
 		}
 	]
 }
