@@ -67,7 +67,7 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("created", lager.Data{"workstation-name": workstation.Name})
+	log.Info("created", lager.Data{"workstation_name": workstation.Name})
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -80,12 +80,12 @@ func (h *WorkstationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err := h.manager.Delete(name)
 	if err != nil {
-		log.Info("delete-failed", lager.Data{"workstation-name": name})
+		log.Info("delete-failed", lager.Data{"workstation_name": name})
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	log.Info("deleted", lager.Data{"workstation-name": name})
+	log.Info("deleted", lager.Data{"workstation_name": name})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -98,20 +98,23 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 
 	actualLRPs, err := h.manager.Fetch(name)
 	if err != nil || len(actualLRPs) == 0 {
-		log.Info("attach-failed", lager.Data{"workstation-name": name, "actual-lrps": actualLRPs, "error": err})
+		log.Info("attach-failed", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	attachURL := fmt.Sprintf("ws://%s:%d/shell", actualLRPs[0].Host, actualLRPs[0].Ports[0].HostPort)
+	log.Debug("attaching-to", lager.Data{"attach_url": attachURL, "actual_lrps": actualLRPs})
 
 	u, _ := url.Parse(attachURL)
 
+	log.Debug("opening-tcp", lager.Data{"address": u.Host})
 	conn, err := net.Dial("tcp", u.Host)
 	if err != nil {
 		log.Error("attach-failed", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	log.Debug("tcp-connection-open", lager.Data{"conn": conn.RemoteAddr()})
 
 	wsClient, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -120,6 +123,7 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer wsClient.Close()
+	log.Debug("websocket-open", lager.Data{"ws": wsClient.RemoteAddr()})
 
 	wsServer, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {attachURL}}, 1024, 1024)
 	if err != nil {
@@ -130,14 +134,14 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 	defer wsServer.Close()
 
 	w.WriteHeader(http.StatusOK)
-	log.Info("attached", lager.Data{"workstation-name": name})
+	log.Info("attached", lager.Data{"workstation_name": name})
 
 	done := make(chan bool)
 	go h.proxyWebsocket(wsServer, wsClient, done)
 	go h.proxyWebsocket(wsClient, wsServer, done)
 	<-done
 
-	log.Info("unattached", lager.Data{"workstation-name": name})
+	log.Info("unattached", lager.Data{"workstation_name": name})
 }
 
 func (h *WorkstationHandler) proxyWebsocket(s *websocket.Conn, d *websocket.Conn, done chan bool) {

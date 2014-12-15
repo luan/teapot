@@ -39,21 +39,32 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 
 	lrpRequest := receptor.DesiredLRPCreateRequest{
 		ProcessGuid: workstation.Name,
-		Domain:      "tiego",
-		Instances:   1,
-		Stack:       "lucid64",
-		RootFSPath:  workstation.DockerImage,
-		DiskMB:      128,
-		MemoryMB:    64,
-		LogGuid:     workstation.Name,
-		LogSource:   "TEAPOT-WORKSTATION",
+		Setup: &diego_models.SerialAction{
+			Actions: []diego_models.Action{
+				&diego_models.DownloadAction{
+					From:     "https://dl.dropboxusercontent.com/u/33868236/tea.tar.gz",
+					To:       "/tmp",
+					CacheKey: "tea",
+				},
+			},
+		},
+		Domain:     "tiego",
+		Instances:  1,
+		Stack:      "lucid64",
+		RootFSPath: workstation.DockerImage,
+		DiskMB:     128,
+		MemoryMB:   64,
+		LogGuid:    workstation.Name,
+		LogSource:  "TEAPOT-WORKSTATION",
+		Ports:      []uint32{8080},
 		Action: &diego_models.RunAction{
-			Path:      "/bin/sh",
-			LogSource: "TEA",
+			Path:       "/tmp/tea",
+			LogSource:  "TEA",
+			Privileged: true,
 		},
 	}
 
-	log.Debug("requesting-lrp", lager.Data{"lrpRequest": lrpRequest})
+	log.Debug("requesting-lrp", lager.Data{"lrp_request": lrpRequest})
 	err = m.receptorClient.CreateDesiredLRP(lrpRequest)
 	if err != nil {
 		log.Debug("request-failed", lager.Data{"error": err})
