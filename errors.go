@@ -10,6 +10,7 @@ func (err Error) Error() string {
 }
 
 const (
+	WorkstationNotFound  = "WorkstationNotFound"
 	InvalidWorkstation   = "InvalidWorkstation"
 	DuplicateWorkstation = "DuplicateWorkstation"
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/gorilla/websocket"
 	"github.com/luan/teapot"
 	"github.com/luan/teapot/managers"
@@ -81,7 +82,7 @@ func (h *WorkstationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	err := h.manager.Delete(name)
 	if err != nil {
 		log.Info("delete-failed", lager.Data{"workstation_name": name})
-		w.WriteHeader(http.StatusNotFound)
+		writeWorkstationNotFoundResponse(w, name)
 		return
 	}
 
@@ -99,7 +100,7 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 	actualLRPs, err := h.manager.Fetch(name)
 	if err != nil || len(actualLRPs) == 0 {
 		log.Info("attach-failed", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
-		w.WriteHeader(http.StatusNotFound)
+		writeWorkstationNotFoundResponse(w, name)
 		return
 	}
 	attachURL := fmt.Sprintf("ws://%s:%d/shell", actualLRPs[0].Host, actualLRPs[0].Ports[0].HostPort)
@@ -157,4 +158,11 @@ func (h *WorkstationHandler) proxyWebsocket(s *websocket.Conn, d *websocket.Conn
 
 		d.WriteMessage(mType, m)
 	}
+}
+
+func writeWorkstationNotFoundResponse(w http.ResponseWriter, name string) {
+	writeJSONResponse(w, http.StatusNotFound, receptor.Error{
+		Type:    teapot.WorkstationNotFound,
+		Message: fmt.Sprintf("Workstation with name '%s' not found", name),
+	})
 }

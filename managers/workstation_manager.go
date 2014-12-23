@@ -42,7 +42,7 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 		Setup: &diego_models.SerialAction{
 			Actions: []diego_models.Action{
 				&diego_models.DownloadAction{
-					From:     "https://dl.dropboxusercontent.com/u/33868236/tea.tar.gz",
+					From:     "https://tiego-artifacts.s3.amazonaws.com/tea-builds/tea-latest.tgz",
 					To:       "/tmp",
 					CacheKey: "tea",
 				},

@@ -124,7 +124,7 @@ var _ = Describe("WorkstationHandler", func() {
 
 		BeforeEach(func() {
 			req = newTestRequest("")
-			req.Form = url.Values{":process_guid": []string{"workstation-name"}}
+			req.Form = url.Values{":name": []string{"workstation-name"}}
 		})
 
 		Context("when everything succeeds", func() {
@@ -150,6 +150,17 @@ var _ = Describe("WorkstationHandler", func() {
 			It("fails with a 404 NOT FOUND", func() {
 				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
 			})
+
+			It("returns an LRPNotFound error", func() {
+				var responseError receptor.Error
+				err := json.Unmarshal(responseRecorder.Body.Bytes(), &responseError)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(responseError).To(Equal(receptor.Error{
+					Type:    teapot.WorkstationNotFound,
+					Message: "Workstation with name 'workstation-name' not found",
+				}))
+			})
 		})
 	})
 
@@ -158,7 +169,7 @@ var _ = Describe("WorkstationHandler", func() {
 
 		BeforeEach(func() {
 			req = newTestRequest("")
-			req.Form = url.Values{":process_guid": []string{"workstation-name"}}
+			req.Form = url.Values{":name": []string{"workstation-name"}}
 		})
 
 		Context("when the workstation doesn't exists", func() {
@@ -168,6 +179,17 @@ var _ = Describe("WorkstationHandler", func() {
 
 			It("fails with a 404 NOT FOUND", func() {
 				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("returns an LRPNotFound error", func() {
+				var responseError receptor.Error
+				err := json.Unmarshal(responseRecorder.Body.Bytes(), &responseError)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(responseError).To(Equal(receptor.Error{
+					Type:    teapot.WorkstationNotFound,
+					Message: "Workstation with name 'workstation-name' not found",
+				}))
 			})
 		})
 
