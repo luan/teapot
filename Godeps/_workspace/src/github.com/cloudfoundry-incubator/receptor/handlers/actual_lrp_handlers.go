@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/receptor/serialization"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
@@ -26,39 +27,22 @@ func NewActualLRPHandler(bbs Bbs.ReceptorBBS, logger lager.Logger) *ActualLRPHan
 }
 
 func (h *ActualLRPHandler) GetAll(w http.ResponseWriter, req *http.Request) {
-	logger := h.logger.Session("get-all")
-
-	actualLRPs, err := h.bbs.ActualLRPs()
-	if err != nil {
-		logger.Error("failed-to-fetch-actual-lrps", err)
-		writeUnknownErrorResponse(w, err)
-		return
-	}
-
-	responses := make([]receptor.ActualLRPResponse, 0, len(actualLRPs))
-	for _, actualLRP := range actualLRPs {
-		responses = append(responses, serialization.ActualLRPToResponse(actualLRP))
-	}
-
-	writeJSONResponse(w, http.StatusOK, responses)
-}
-
-func (h *ActualLRPHandler) GetAllByDomain(w http.ResponseWriter, req *http.Request) {
-	domain := req.FormValue(":domain")
-	logger := h.logger.Session("get-all-by-domain", lager.Data{
-		"Domain": domain,
+	domain := req.FormValue("domain")
+	logger := h.logger.Session("get-all", lager.Data{
+		"domain": domain,
 	})
 
+	var actualLRPs []models.ActualLRP
+	var err error
+
 	if domain == "" {
-		err := errors.New("domain missing from request")
-		logger.Error("missing-domain", err)
-		writeBadRequestResponse(w, receptor.InvalidRequest, err)
-		return
+		actualLRPs, err = h.bbs.ActualLRPs()
+	} else {
+		actualLRPs, err = h.bbs.ActualLRPsByDomain(domain)
 	}
 
-	actualLRPs, err := h.bbs.ActualLRPsByDomain(domain)
 	if err != nil {
-		logger.Error("failed-to-fetch-actual-lrps-by-domain", err)
+		logger.Error("failed-to-fetch-actual-lrps", err)
 		writeUnknownErrorResponse(w, err)
 		return
 	}
@@ -84,10 +68,7 @@ func (h *ActualLRPHandler) GetAllByProcessGuid(w http.ResponseWriter, req *http.
 		return
 	}
 
-	var actualLRPs []models.ActualLRP
-	var err error
-
-	actualLRPs, err = h.bbs.ActualLRPsByProcessGuid(processGuid)
+	actualLRPs, err := h.bbs.ActualLRPsByProcessGuid(processGuid)
 	if err != nil {
 		logger.Error("failed-to-fetch-actual-lrps-by-process-guid", err)
 		writeUnknownErrorResponse(w, err)
@@ -136,14 +117,14 @@ func (h *ActualLRPHandler) GetByProcessGuidAndIndex(w http.ResponseWriter, req *
 	}
 
 	actualLRP, err := h.bbs.ActualLRPByProcessGuidAndIndex(processGuid, index)
-	if err != nil {
-		logger.Error("failed-to-fetch-actual-lrps-by-process-guid", err)
-		writeUnknownErrorResponse(w, err)
+	if err == bbserrors.ErrStoreResourceNotFound {
+		writeJSONResponse(w, http.StatusNotFound, nil)
 		return
 	}
 
-	if actualLRP == nil {
-		writeJSONResponse(w, http.StatusNotFound, nil)
+	if err != nil {
+		logger.Error("failed-to-fetch-actual-lrps-by-process-guid", err)
+		writeUnknownErrorResponse(w, err)
 		return
 	}
 

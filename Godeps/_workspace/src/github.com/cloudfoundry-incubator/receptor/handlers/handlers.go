@@ -14,28 +14,25 @@ func New(bbs Bbs.ReceptorBBS, logger lager.Logger, username, password string, co
 	desiredLRPHandler := NewDesiredLRPHandler(bbs, logger)
 	actualLRPHandler := NewActualLRPHandler(bbs, logger)
 	cellHandler := NewCellHandler(bbs, logger)
-	freshDomainHandler := NewFreshDomainHandler(bbs, logger)
+	domainHandler := NewDomainHandler(bbs, logger)
 
 	actions := rata.Handlers{
 		// Tasks
-		receptor.CreateTaskRoute:    route(taskHandler.Create),
-		receptor.TasksRoute:         route(taskHandler.GetAll),
-		receptor.TasksByDomainRoute: route(taskHandler.GetAllByDomain),
-		receptor.GetTaskRoute:       route(taskHandler.GetByGuid),
-		receptor.DeleteTaskRoute:    route(taskHandler.Delete),
-		receptor.CancelTaskRoute:    route(taskHandler.Cancel),
+		receptor.CreateTaskRoute: route(taskHandler.Create),
+		receptor.TasksRoute:      route(taskHandler.GetAll),
+		receptor.GetTaskRoute:    route(taskHandler.GetByGuid),
+		receptor.DeleteTaskRoute: route(taskHandler.Delete),
+		receptor.CancelTaskRoute: route(taskHandler.Cancel),
 
 		// DesiredLRPs
-		receptor.CreateDesiredLRPRoute:    route(desiredLRPHandler.Create),
-		receptor.GetDesiredLRPRoute:       route(desiredLRPHandler.Get),
-		receptor.UpdateDesiredLRPRoute:    route(desiredLRPHandler.Update),
-		receptor.DeleteDesiredLRPRoute:    route(desiredLRPHandler.Delete),
-		receptor.DesiredLRPsRoute:         route(desiredLRPHandler.GetAll),
-		receptor.DesiredLRPsByDomainRoute: route(desiredLRPHandler.GetAllByDomain),
+		receptor.CreateDesiredLRPRoute: route(desiredLRPHandler.Create),
+		receptor.GetDesiredLRPRoute:    route(desiredLRPHandler.Get),
+		receptor.UpdateDesiredLRPRoute: route(desiredLRPHandler.Update),
+		receptor.DeleteDesiredLRPRoute: route(desiredLRPHandler.Delete),
+		receptor.DesiredLRPsRoute:      route(desiredLRPHandler.GetAll),
 
 		// ActualLRPs
 		receptor.ActualLRPsRoute:                         route(actualLRPHandler.GetAll),
-		receptor.ActualLRPsByDomainRoute:                 route(actualLRPHandler.GetAllByDomain),
 		receptor.ActualLRPsByProcessGuidRoute:            route(actualLRPHandler.GetAllByProcessGuid),
 		receptor.ActualLRPByProcessGuidAndIndexRoute:     route(actualLRPHandler.GetByProcessGuidAndIndex),
 		receptor.KillActualLRPByProcessGuidAndIndexRoute: route(actualLRPHandler.KillByProcessGuidAndIndex),
@@ -43,9 +40,9 @@ func New(bbs Bbs.ReceptorBBS, logger lager.Logger, username, password string, co
 		// Cells
 		receptor.CellsRoute: route(cellHandler.GetAll),
 
-		// Fresh domains
-		receptor.BumpFreshDomainRoute: route(freshDomainHandler.Bump),
-		receptor.FreshDomainsRoute:    route(freshDomainHandler.GetAll),
+		// Domains
+		receptor.UpsertDomainRoute: route(domainHandler.Upsert),
+		receptor.DomainsRoute:      route(domainHandler.GetAll),
 	}
 
 	handler, err := rata.NewRouter(receptor.Routes, actions)
