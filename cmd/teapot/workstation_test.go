@@ -67,7 +67,7 @@ var _ = Describe("Workstation API", func() {
 						Action: &models.RunAction{
 							Path:       "/tmp/tea",
 							LogSource:  "TEA",
-							Privileged: true,
+							Privileged: false,
 						},
 					}),
 				),

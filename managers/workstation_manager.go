@@ -63,7 +63,7 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 		Action: &diego_models.RunAction{
 			Path:       "/tmp/tea",
 			LogSource:  "TEA",
-			Privileged: true,
+			Privileged: false,
 		},
 	}
 

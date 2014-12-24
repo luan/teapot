@@ -33,6 +33,13 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 	fmt.Println(teapotDownloadURL)
 	client.DeleteDesiredLRP("teapot")
 	route := fmt.Sprintf("teapot.%s", routeRoot)
+	username := os.Getenv("TEAPOT_USERNAME")
+	password := os.Getenv("TEAPOT_PASSWORD")
+	devMode := os.Getenv("TEAPOT_DEVMODE")
+	if devMode != "true" && (len(username) == 0 || len(password) == 0) {
+		fmt.Println("Either set TEAPOT_USERNAME and TEAPOT_PASSWORD or, to disable authentication, TEAPOT_DEVMODE=true")
+		os.Exit(1)
+	}
 	err := client.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 		ProcessGuid: "teapot",
 		Domain:      "teapot",
@@ -54,6 +61,8 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 			Args: []string{
 				"-address", "0.0.0.0:8080",
 				"-receptorAddress", receptorAddr,
+				"-username", username,
+				"-password", password,
 			},
 			LogSource: "TEAPOT",
 		},
