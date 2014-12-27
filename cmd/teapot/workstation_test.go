@@ -85,6 +85,38 @@ var _ = Describe("Workstation API", func() {
 		})
 	})
 
+	Describe("GET /workstations/", func() {
+		var listErr error
+
+		BeforeEach(func() {
+			// workstationToDelete := "w1"
+			desiredLRPsRoute, _ := receptor.Routes.FindRouteByName(receptor.DesiredLRPsByDomainRoute)
+			actualLRPsRoute, _ := receptor.Routes.FindRouteByName(receptor.ActualLRPsByDomainRoute)
+			desiredLRPsPath, _ := desiredLRPsRoute.CreatePath(rata.Params{"domain": "tiego"})
+			actualLRPsPath, _ := actualLRPsRoute.CreatePath(rata.Params{"domain": "tiego"})
+			receptorServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(desiredLRPsRoute.Method, desiredLRPsPath),
+					ghttp.RespondWith(http.StatusOK, ""),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(actualLRPsRoute.Method, actualLRPsPath),
+					ghttp.RespondWith(http.StatusOK, ""),
+				),
+			)
+
+			listErr = client.ListWorkstations()
+		})
+
+		It("responds without an error", func() {
+			Expect(listErr).NotTo(HaveOccurred())
+		})
+
+		It("requests the LRPs from the receptor", func() {
+			Expect(receptorServer.ReceivedRequests()).To(HaveLen(2))
+		})
+	})
+
 	Describe("DELETE /workstatations/:name", func() {
 		var deleteErr error
 

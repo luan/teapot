@@ -5,10 +5,11 @@ import "regexp"
 type Workstation struct {
 	Name        string `json:"name"`
 	DockerImage string `json:"docker_image"`
+	State       string `json:"state"`
 }
 
 func NewWorkstation(arguments ...string) Workstation {
-	var name, dockerImage string
+	var name, dockerImage, state string
 
 	if len(arguments) > 0 {
 		name = arguments[0]
@@ -19,7 +20,13 @@ func NewWorkstation(arguments ...string) Workstation {
 		dockerImage = "docker:///ubuntu#trusty"
 	}
 
-	return Workstation{name, dockerImage}
+	if len(arguments) > 2 && len(arguments[2]) > 0 {
+		state = arguments[2]
+	} else {
+		state = "STOPPED"
+	}
+
+	return Workstation{name, dockerImage, state}
 }
 
 func (workstation Workstation) Validate() error {

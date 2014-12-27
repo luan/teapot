@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -115,6 +116,43 @@ var _ = Describe("WorkstationHandler", func() {
 					Message: err.Error(),
 				})
 				Expect(responseRecorder.Body.String()).To(Equal(string(expectedBody)))
+			})
+		})
+	})
+
+	Describe("List", func() {
+		var req *http.Request
+		var firstDesiredLRP receptor.DesiredLRPResponse
+		var secondDesiredLRP receptor.DesiredLRPResponse
+		var actualLRPResponse receptor.ActualLRPResponse
+
+		BeforeEach(func() {
+			req = newTestRequest("")
+			firstDesiredLRP = receptor.DesiredLRPResponse{ProcessGuid: "workstation1", RootFSPath: "docker:///ubuntu#trusty"}
+			secondDesiredLRP = receptor.DesiredLRPResponse{ProcessGuid: "workstation2", RootFSPath: "docker:///cloudfoundry/runtime-ci"}
+			actualLRPResponse = receptor.ActualLRPResponse{ProcessGuid: "workstation2", State: "RUNNING"}
+			fakeReceptorClient.DesiredLRPsByDomainReturns([]receptor.DesiredLRPResponse{firstDesiredLRP, secondDesiredLRP}, nil)
+			fakeReceptorClient.ActualLRPsByDomainReturns([]receptor.ActualLRPResponse{actualLRPResponse}, nil)
+		})
+
+		Context("when everything succeeds", func() {
+			BeforeEach(func() {
+				handler.List(responseRecorder, req)
+			})
+
+			It("responds with 200 OK", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusOK))
+			})
+
+			It("responds with a list of desired and actual workstations", func() {
+				firstLRPJson := fmt.Sprintf(`{"name":"%s","docker_image":"%s","state":"%s"}`,
+					firstDesiredLRP.ProcessGuid, firstDesiredLRP.RootFSPath, "STOPPED")
+
+				secondLRPJson := fmt.Sprintf(`{"name":"%s","docker_image":"%s","state":"%s"}`,
+					secondDesiredLRP.ProcessGuid, secondDesiredLRP.RootFSPath, actualLRPResponse.State)
+				expectedResponse := fmt.Sprintf(`[%s,%s]`, firstLRPJson, secondLRPJson)
+
+				Expect(responseRecorder.Body.String()).To(Equal(expectedResponse))
 			})
 		})
 	})

@@ -73,6 +73,15 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (h *WorkstationHandler) List(w http.ResponseWriter, r *http.Request) {
+	workstations, _ := h.manager.List()
+
+	js, _ := json.Marshal(&workstations)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(js)
+}
+
 func (h *WorkstationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue(":name")
 	log := h.logger.Session("delete", lager.Data{

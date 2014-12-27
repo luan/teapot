@@ -19,6 +19,7 @@ type Client interface {
 	CreateWorkstation(request WorkstationCreateRequest) error
 	DeleteWorkstation(name string) error
 	AttachWorkstation(name string) (*websocket.Conn, error)
+	ListWorkstations() error
 }
 
 type client struct {
@@ -43,6 +44,10 @@ func (c *client) DeleteWorkstation(name string) error {
 
 func (c *client) AttachWorkstation(name string) (*websocket.Conn, error) {
 	return c.wsRequest(AttachWorkstationRoute, rata.Params{"name": name}, nil, nil)
+}
+
+func (c *client) ListWorkstations() error {
+	return c.doRequest(ListWorkstationsRoute, rata.Params{}, nil, nil, nil)
 }
 
 func (c *client) doRequest(requestName string, params rata.Params, queryParams url.Values, request, response interface{}) error {

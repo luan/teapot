@@ -1,6 +1,8 @@
 package managers
 
 import (
+	"fmt"
+
 	"github.com/cloudfoundry-incubator/receptor"
 	diego_models "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/luan/teapot/models"
@@ -11,6 +13,7 @@ type WorkstationManager interface {
 	Create(workstation models.Workstation) error
 	Delete(name string) error
 	Fetch(name string) ([]receptor.ActualLRPResponse, error)
+	List() ([]models.Workstation, error)
 }
 
 type workstationManager struct {
@@ -81,4 +84,30 @@ func (m *workstationManager) Delete(name string) error {
 
 func (m *workstationManager) Fetch(name string) ([]receptor.ActualLRPResponse, error) {
 	return m.receptorClient.ActualLRPsByProcessGuid(name)
+}
+
+func (m *workstationManager) List() ([]models.Workstation, error) {
+	workstations := []models.Workstation{}
+
+	desiredLRPs, _ := m.receptorClient.DesiredLRPsByDomain("tiego")
+	actualLRPs, _ := m.receptorClient.ActualLRPsByDomain("tiego")
+
+	for _, desiredLRP := range desiredLRPs {
+		state := ""
+		if i := contains(actualLRPs, desiredLRP.ProcessGuid); i >= 0 {
+			state = fmt.Sprintf("%v", actualLRPs[i].State)
+		}
+		workstations = append(workstations, models.NewWorkstation(desiredLRP.ProcessGuid, desiredLRP.RootFSPath, state))
+	}
+
+	return workstations, nil
+}
+
+func contains(s []receptor.ActualLRPResponse, e string) int {
+	for i, a := range s {
+		if a.ProcessGuid == e {
+			return i
+		}
+	}
+	return -1
 }
