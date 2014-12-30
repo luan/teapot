@@ -7,6 +7,7 @@ const (
 	CreateWorkstationRoute = "CreateWorkstation"
 	DeleteWorkstationRoute = "DeleteWorkstation"
 	AttachWorkstationRoute = "AttachWorkstation"
+	ListWorkstationsRoute  = "ListWorkstations"
 )
 
 var Routes = rata.Routes{
@@ -14,4 +15,5 @@ var Routes = rata.Routes{
 	{Path: "/workstations", Method: "POST", Name: CreateWorkstationRoute},
 	{Path: "/workstations/:name", Method: "DELETE", Name: DeleteWorkstationRoute},
 	{Path: "/workstations/:name/attach", Method: "GET", Name: AttachWorkstationRoute},
+	{Path: "/workstations", Method: "GET", Name: ListWorkstationsRoute},
 }
