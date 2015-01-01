@@ -37,7 +37,7 @@ func (workstation Workstation) Validate() error {
 		validationError = append(validationError, ErrInvalidField{"name"})
 	}
 
-	matched, err = regexp.MatchString("^docker:///[\\w-.]+#?[\\w-.]*$", workstation.DockerImage)
+	matched, err = regexp.MatchString("^docker:///[\\w-.]+(/[\\w-.]+)?#?[\\w-.]*$", workstation.DockerImage)
 	if err != nil || !matched {
 		validationError = append(validationError, ErrInvalidField{"docker_image"})
 	}
