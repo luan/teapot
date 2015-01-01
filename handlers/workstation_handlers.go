@@ -112,7 +112,7 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 		writeWorkstationNotFoundResponse(w, name)
 		return
 	}
-	attachURL := fmt.Sprintf("ws://%s:%d/shell", actualLRPs[0].Host, actualLRPs[0].Ports[0].HostPort)
+	attachURL := fmt.Sprintf("ws://%s:%d/shell", actualLRPs[0].Address, actualLRPs[0].Ports[0].HostPort)
 	log.Debug("attaching-to", lager.Data{"attach_url": attachURL, "actual_lrps": actualLRPs})
 
 	u, _ := url.Parse(attachURL)

@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/luan/teapot",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4",
 	"Packages": [
 		"./..."
 	],
@@ -19,15 +19,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/receptor",
-			"Rev": "910472b09c2a5a100f3b26e119e4b378334497f5"
+			"Rev": "93c689bf8d0aa847e61c48ed4f5a5f7e53040640"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "3fc54a5908b00fcb91cc9f2fa917ee87d65f8dcf"
+			"Rev": "de26448f4481ae77a0bedaa04d1716585a78bc9b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/dropsonde",
-			"Rev": "eeb0380122486138057a6ef5552d3bd075a5f2af"
+			"Rev": "b547d548b025b96831e49480466d090901ef09a4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -40,7 +40,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "9007e29a7c93fc3dcebbdbf742ce0efaf19e6510"
+			"Rev": "1f87405cd9755fc388e111c4003caca4a2f52fa6"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -53,8 +53,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Comment": "v1.0-26-gdc751ce",
-			"Rev": "dc751ce5f266d83c26fae5c0a9093973b29cb61d"
+			"Comment": "v1.0-28-g8adf9e1",
+			"Rev": "8adf9e1730c55cdc590de7d49766cb2acc88d8f2"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
@@ -62,7 +62,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "7b553b1cf44cbef25f033876ffcec465c631f0b7"
+			"Rev": "611096055721e35a95e3d1e4e2bc666fae509fcb"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

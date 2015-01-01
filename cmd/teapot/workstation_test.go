@@ -89,8 +89,8 @@ var _ = Describe("Workstation API", func() {
 		var listErr error
 
 		BeforeEach(func() {
-			desiredLRPsRoute, _ := receptor.Routes.FindRouteByName(receptor.DesiredLRPsByDomainRoute)
-			actualLRPsRoute, _ := receptor.Routes.FindRouteByName(receptor.ActualLRPsByDomainRoute)
+			desiredLRPsRoute, _ := receptor.Routes.FindRouteByName(receptor.DesiredLRPsRoute)
+			actualLRPsRoute, _ := receptor.Routes.FindRouteByName(receptor.ActualLRPsRoute)
 			desiredLRPsPath, _ := desiredLRPsRoute.CreatePath(rata.Params{"domain": "tiego"})
 			actualLRPsPath, _ := actualLRPsRoute.CreatePath(rata.Params{"domain": "tiego"})
 			receptorServer.AppendHandlers(
@@ -164,8 +164,8 @@ var _ = Describe("Workstation API", func() {
 					ghttp.VerifyRequest(actualLRPsByProcessGuidRoute.Method, actualLRPsByProcessGuidPath),
 					ghttp.RespondWithJSONEncoded(http.StatusOK, []receptor.ActualLRPResponse{
 						{
-							Host:  teaHost,
-							Ports: []receptor.PortMapping{{HostPort: uint32(teaPort)}},
+							Address: teaHost,
+							Ports:   []receptor.PortMapping{{HostPort: uint32(teaPort)}},
 						},
 					}),
 				),
