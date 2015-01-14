@@ -1,4 +1,4 @@
-# Teapot
+# Teapot [![Build Status](https://travis-ci.org/luan/teapot.svg?branch=master)](https://travis-ci.org/luan/teapot)
 
 Teapot is the API that powers [Tiego](https://github.com/luan/tiego). It's a simple, RESTful JSON API to manage cloud provided workstations backed by [Diego](https://github.com/cloudfoundry-incubator/diego-release) and [Docker](http://docker.com) images.
 
