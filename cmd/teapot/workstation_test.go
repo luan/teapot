@@ -104,7 +104,7 @@ var _ = Describe("Workstation API", func() {
 				),
 			)
 
-			listErr = client.ListWorkstations()
+			_, listErr = client.ListWorkstations()
 		})
 
 		It("responds without an error", func() {
