@@ -32,14 +32,29 @@ Workstations are the base resource of the **Teapot API**
 + Parameters
     + name (required, string, `golang`) ... Unique `name` of the Workstation
     + docker_image = `docker:///ubuntu#trusty` (optional, string, `docker:///debian#wheezy`) ... Docker image to be used **must be availabe on _hub.docker.com_**
+    + cpu_weight = `1` (optional, integer, `2`) ... The `cpu_weight` enforces a relative fair share of the CPU among containers.
+    + disk_mb = `2048` (optional, integer, `3072`) ... Amount of disk space (in megabytes) available to the container.
+    + memory_mb = `256` (optional, integer, `512`) ... Amount of memory (in megabytes) available to the container.
 
 + Request (application/json)
 
-        { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
+        {
+            "name": "golang",
+            "docker_image": "docker:///golang#1.3.3",
+            "cpu_weight": 3,
+            "disk_mb": 1024,
+            "memory_mb": 128
+        }
 
 + Response 201 (application/json)
 
-        { "name": "golang", "docker_image": "docker:///golang#1.3.3" }
+        {
+            "name": "golang",
+            "docker_image": "docker:///golang#1.3.3",
+            "cpu_weight": 3,
+            "disk_mb": 1024,
+            "memory_mb": 128
+        }
 
 ## Workstation [/workstations/{name}]
 A single Workstation object with all its details
