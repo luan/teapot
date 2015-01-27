@@ -45,7 +45,7 @@ func (h *WorkstationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workstation := models.NewWorkstation(workstationRequest.Name, workstationRequest.DockerImage)
+	workstation := models.NewWorkstation(workstationRequest)
 
 	err = h.manager.Create(workstation)
 

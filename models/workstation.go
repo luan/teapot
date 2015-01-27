@@ -1,32 +1,39 @@
 package models
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/luan/teapot"
+)
+
+const (
+	StoppedState = "STOPPED"
+	RunningState = "RUNNING"
+	ClaimedState = "CLAIMED"
+)
 
 type Workstation struct {
 	Name        string `json:"name"`
 	DockerImage string `json:"docker_image"`
 	State       string `json:"state"`
+	CPUWeight   uint   `json:"cpu_weight"`
+	DiskMB      int    `json:"disk_mb"`
+	MemoryMB    int    `json:"memory_mb"`
 }
 
-func NewWorkstation(arguments ...string) Workstation {
-	var name, dockerImage, state string
-
-	if len(arguments) > 0 {
-		name = arguments[0]
-	}
-	if len(arguments) > 1 && len(arguments[1]) > 0 {
-		dockerImage = arguments[1]
-	} else {
-		dockerImage = "docker:///ubuntu#trusty"
+func NewWorkstation(request teapot.WorkstationCreateRequest) Workstation {
+	if len(request.DockerImage) == 0 {
+		request.DockerImage = "docker:///ubuntu#trusty"
 	}
 
-	if len(arguments) > 2 && len(arguments[2]) > 0 {
-		state = arguments[2]
-	} else {
-		state = "STOPPED"
+	return Workstation{
+		Name:        request.Name,
+		DockerImage: request.DockerImage,
+		CPUWeight:   request.CPUWeight,
+		DiskMB:      request.DiskMB,
+		MemoryMB:    request.MemoryMB,
+		State:       StoppedState,
 	}
-
-	return Workstation{name, dockerImage, state}
 }
 
 func (workstation Workstation) Validate() error {

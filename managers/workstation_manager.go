@@ -55,8 +55,9 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 		Instances:  1,
 		Stack:      "lucid64",
 		RootFSPath: workstation.DockerImage,
-		DiskMB:     128,
-		MemoryMB:   64,
+		CPUWeight:  workstation.CPUWeight,
+		DiskMB:     workstation.DiskMB,
+		MemoryMB:   workstation.MemoryMB,
 		LogGuid:    workstation.Name,
 		LogSource:  "TEAPOT-WORKSTATION",
 		Ports:      []uint32{8080},
@@ -93,11 +94,12 @@ func (m *workstationManager) List() ([]models.Workstation, error) {
 	actualLRPs, _ := m.receptorClient.ActualLRPsByDomain("tiego")
 
 	for _, desiredLRP := range desiredLRPs {
-		state := ""
+		state := models.StoppedState
 		if i := contains(actualLRPs, desiredLRP.ProcessGuid); i >= 0 {
 			state = fmt.Sprintf("%v", actualLRPs[i].State)
 		}
-		workstations = append(workstations, models.NewWorkstation(desiredLRP.ProcessGuid, desiredLRP.RootFSPath, state))
+		workstation := models.Workstation{Name: desiredLRP.ProcessGuid, DockerImage: desiredLRP.RootFSPath, State: state}
+		workstations = append(workstations, workstation)
 	}
 
 	return workstations, nil

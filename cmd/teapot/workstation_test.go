@@ -59,8 +59,9 @@ var _ = Describe("Workstation API", func() {
 						Instances:  1,
 						Stack:      "lucid64",
 						RootFSPath: "docker:///debian#wheezy",
-						DiskMB:     128,
-						MemoryMB:   64,
+						CPUWeight:  2,
+						DiskMB:     1024,
+						MemoryMB:   512,
 						LogGuid:    "my-workstation",
 						LogSource:  "TEAPOT-WORKSTATION",
 						Ports:      []uint32{8080},
@@ -219,5 +220,8 @@ func newValidWorkstationCreateRequest() teapot.WorkstationCreateRequest {
 	return teapot.WorkstationCreateRequest{
 		Name:        "my-workstation",
 		DockerImage: "docker:///debian#wheezy",
+		CPUWeight:   2,
+		DiskMB:      1024,
+		MemoryMB:    512,
 	}
 }

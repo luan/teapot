@@ -3,7 +3,6 @@ package handlers_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"github.com/luan/teapot"
 	. "github.com/luan/teapot/handlers"
 	"github.com/luan/teapot/managers"
+	"github.com/luan/teapot/models"
 	"github.com/pivotal-golang/lager"
 
 	. "github.com/onsi/ginkgo"
@@ -130,7 +130,7 @@ var _ = Describe("WorkstationHandler", func() {
 			req = newTestRequest("")
 			firstDesiredLRP = receptor.DesiredLRPResponse{ProcessGuid: "workstation1", RootFSPath: "docker:///ubuntu#trusty"}
 			secondDesiredLRP = receptor.DesiredLRPResponse{ProcessGuid: "workstation2", RootFSPath: "docker:///cloudfoundry/runtime-ci"}
-			actualLRPResponse = receptor.ActualLRPResponse{ProcessGuid: "workstation2", State: "RUNNING"}
+			actualLRPResponse = receptor.ActualLRPResponse{ProcessGuid: "workstation2", State: models.RunningState}
 			fakeReceptorClient.DesiredLRPsByDomainReturns([]receptor.DesiredLRPResponse{firstDesiredLRP, secondDesiredLRP}, nil)
 			fakeReceptorClient.ActualLRPsByDomainReturns([]receptor.ActualLRPResponse{actualLRPResponse}, nil)
 		})
@@ -145,14 +145,10 @@ var _ = Describe("WorkstationHandler", func() {
 			})
 
 			It("responds with a list of desired and actual workstations", func() {
-				firstLRPJson := fmt.Sprintf(`{"name":"%s","docker_image":"%s","state":"%s"}`,
-					firstDesiredLRP.ProcessGuid, firstDesiredLRP.RootFSPath, "STOPPED")
-
-				secondLRPJson := fmt.Sprintf(`{"name":"%s","docker_image":"%s","state":"%s"}`,
-					secondDesiredLRP.ProcessGuid, secondDesiredLRP.RootFSPath, actualLRPResponse.State)
-				expectedResponse := fmt.Sprintf(`[%s,%s]`, firstLRPJson, secondLRPJson)
-
-				Expect(responseRecorder.Body.String()).To(Equal(expectedResponse))
+				var response []models.Workstation
+				json.Unmarshal(responseRecorder.Body.Bytes(), &response)
+				Expect(response[0].Name).To(Equal(firstDesiredLRP.ProcessGuid))
+				Expect(response[1].Name).To(Equal(secondDesiredLRP.ProcessGuid))
 			})
 		})
 	})

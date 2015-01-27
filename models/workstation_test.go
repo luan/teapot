@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/luan/teapot"
 	. "github.com/luan/teapot/models"
 )
 
@@ -11,26 +12,24 @@ var _ = Describe("Workstation", func() {
 	var workstation Workstation
 
 	Describe("NewWorkstation", func() {
-		It("defaults dockerImage to something valid", func() {
-			workstation = NewWorkstation()
-			Expect(workstation.DockerImage).To(Equal("docker:///ubuntu#trusty"))
-		})
-
-		It("defaults dockerImage to something valid", func() {
-			workstation = NewWorkstation("a-name", "")
+		It("defaults dockerImage to something valid if not set", func() {
+			workstation = NewWorkstation(teapot.WorkstationCreateRequest{})
 			Expect(workstation.DockerImage).To(Equal("docker:///ubuntu#trusty"))
 		})
 
 		It("defaults State to STOPPED", func() {
-			workstation = NewWorkstation()
-			Expect(workstation.State).To(Equal("STOPPED"))
+			workstation = NewWorkstation(teapot.WorkstationCreateRequest{})
+			Expect(workstation.State).To(Equal(StoppedState))
 		})
 	})
 
 	Describe("Validate", func() {
 		Context("when the workstation has a valid name and docker_image", func() {
 			It("is valid", func() {
-				workstation = NewWorkstation("w_-1.1", "docker:///a/b#c-1.1")
+				workstation = Workstation{
+					Name:        "w_-1.1",
+					DockerImage: "docker:///a/b#c-1.1",
+				}
 
 				err := workstation.Validate()
 				Expect(err).NotTo(HaveOccurred())
@@ -39,7 +38,7 @@ var _ = Describe("Workstation", func() {
 
 		Context("when the workstation name is present but invalid", func() {
 			It("returns an error indicating so", func() {
-				workstation = NewWorkstation("invalid/guid")
+				workstation = Workstation{Name: "invalid/guid"}
 
 				err := workstation.Validate()
 				Expect(err).To(HaveOccurred())
@@ -49,22 +48,22 @@ var _ = Describe("Workstation", func() {
 
 		for _, testCase := range []ValidatorErrorCase{
 			{"name",
-				NewWorkstation(),
+				Workstation{},
 			},
 			{"name",
-				NewWorkstation("a b"),
+				Workstation{Name: "a b"},
 			},
 			{"docker_image",
-				NewWorkstation("a", "blah"),
+				Workstation{Name: "a", DockerImage: "blah"},
 			},
 			{"docker_image",
-				NewWorkstation("a", "http://example.com"),
+				Workstation{Name: "a", DockerImage: "http://example.com"},
 			},
 			{"docker_image",
-				NewWorkstation("a", "docker://ubuntu#trusty"),
+				Workstation{Name: "a", DockerImage: "docker://ubuntu#trusty"},
 			},
 			{"docker_image",
-				NewWorkstation("a", "docker:///ubuntu:trusty"),
+				Workstation{Name: "a", DockerImage: "docker:///ubuntu:trusty"},
 			},
 		} {
 			testValidatorErrorCase(testCase)
