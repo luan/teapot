@@ -27,11 +27,14 @@ func TaskFromRequest(req receptor.TaskCreateRequest) (models.Task, error) {
 		EnvironmentVariables:  EnvironmentVariablesToModel(req.EnvironmentVariables),
 		LogGuid:               req.LogGuid,
 		LogSource:             req.LogSource,
+		MetricsGuid:           req.MetricsGuid,
 		MemoryMB:              req.MemoryMB,
 		ResultFile:            req.ResultFile,
 		RootFSPath:            req.RootFSPath,
 		Stack:                 req.Stack,
 		TaskGuid:              req.TaskGuid,
+		Privileged:            req.Privileged,
+		EgressRules:           req.EgressRules,
 	}
 
 	return task, nil
@@ -54,7 +57,9 @@ func TaskToResponse(task models.Task) receptor.TaskResponse {
 		CellID:                task.CellID,
 		LogGuid:               task.LogGuid,
 		LogSource:             task.LogSource,
+		MetricsGuid:           task.MetricsGuid,
 		MemoryMB:              task.MemoryMB,
+		Privileged:            task.Privileged,
 		RootFSPath:            task.RootFSPath,
 		Stack:                 task.Stack,
 		TaskGuid:              task.TaskGuid,
@@ -64,6 +69,7 @@ func TaskToResponse(task models.Task) receptor.TaskResponse {
 		FailureReason: task.FailureReason,
 		Result:        task.Result,
 		State:         taskStateToResponseState(task.State),
+		EgressRules:   task.EgressRules,
 	}
 }
 

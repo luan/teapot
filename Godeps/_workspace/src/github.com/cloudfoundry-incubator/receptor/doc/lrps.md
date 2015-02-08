@@ -1,10 +1,10 @@
 # LRPs: Long Running Processes
 
-Diego can distribute and monitor multiple instances of a Long Running Process (LRP).  These instances are distributed across Diego Cells and restarted automatically if they crash or disappear.  The instances are identical (though each instance is given a unique index (in the range `0, 1, ...N-1`) and a a unique instance guid).
+Diego can distribute and monitor multiple instances of a Long Running Process (LRP).  These instances are distributed across Diego Cells and restarted automatically if they crash or disappear.  The instances are identical (though each instance is given a unique index (in the range `0, 1, ...N-1`) and a unique instance guid).
 
 LRPs are described by providing Diego with a `DesiredLRP`.  The `DesiredLRP` can be thought of as a manifest that describes how an LRP should be executed and monitored.
 
-The instances that end up running on Diego cells are referred to as `ActualLRP`s.  The `ActualLRP`s contain information about the state of the instance and about the host Cell the instance is running on.  
+The instances that end up running on Diego cells are referred to as `ActualLRP`s.  The `ActualLRP`s contain information about the state of the instance and about the host Cell the instance is running on.
 
 When describing a property common to both `DesiredLRP`s and `ActualLRP`s (e.g. the `process_guid`) we may refer to both notions collectively simply as LRPs.
 
@@ -25,7 +25,7 @@ When desiring an LRP you `POST` a valid `DesiredLRPCreateRequest`.  The [API ref
 
     "instances": 17,
 
-    "root_fs": "docker:///docker-org/docker-image",
+    "rootfs": "docker:///docker-org/docker-image",
     "env": [
         {"name": "ENV_NAME_A", "value": "ENV_VALUE_A"},
         {"name": "ENV_NAME_B", "value": "ENV_VALUE_B"}
@@ -34,6 +34,7 @@ When desiring an LRP you `POST` a valid `DesiredLRPCreateRequest`.  The [API ref
     "cpu_weight": 57,
     "disk_mb": 1024,
     "memory_mb": 128,
+    "privileged": true,
 
     "setup": ACTION,
     "action":  ACTION,
@@ -41,12 +42,34 @@ When desiring an LRP you `POST` a valid `DesiredLRPCreateRequest`.  The [API ref
     "start_timeout": N seconds,
 
     "ports": [8080, 5050],
-    "routes": ["a.example.com", "b.example.com"],
+    "routes": {
+        "cf-router": [
+            {
+                "hostnames": ["a.example.com", "b.example.com"],
+                "port": 8080
+            }, {
+                "hostnames": ["c.example.com"],
+                "port": 5050
+            }
+        ],
+        "router-key": "any opaque json payload"
+    }
 
     "log_guid": "some-log-guid",
     "log_source": "some-log-source",
 
-    "annotation": "arbitrary metadata"
+    "annotation": "arbitrary metadata",
+
+    "egress_rules": [
+        {
+            "protocol": "tcp",
+            "destinations": ["0.0.0.0/0"],
+            "port_range": {
+                "start": 1,
+                "end": 1024
+            }
+       }
+   ]
 }
 ```
 
@@ -86,21 +109,25 @@ Diego can run and manage multiple instances (`ActualLRP`s) for each `DesiredLRP`
 
 #### Container Contents and Environment
 
-#### `root_fs` [optional]
+#### `rootfs` [optional]
 
 By default, when provisioning a container Diego will mount a pre-configured root filesystem.  Currently, the default filesystem provided by [diego-release](https://github.com/cloudfoundry-incubator/diego-release) is based on lucid64 and is geared towards supporting the Cloud Foundry buildpacks.
 
-It is possible, however, to provide a custom root filesystem by specifying a Dockerimage for `root_fs`:
+It is possible, however, to provide a custom root filesystem by specifying a Docker image for `rootfs`:
 
 ```
-"root_fs": "docker:///docker-org/docker-image#docker-tag"
+"rootfs": "docker:///docker-org/docker-image#docker-tag"
 ```
 
-Currently, only the public docker hub is supported.
+To pull the image from a different registry than the default (Docker Hub), specify it as the host in the URI string, e.g.:
 
-> You *must* specify the dockerimage `root_fs` uri as specified, including the leading `docker:///`!
+```
+"rootfs": "docker://index.myregistry.gov/docker-org/docker-image#docker-tag"
+```
 
-> [Diego-Edge](http://github.com/cloudfoundry-incubator/diego-lite) does not ship with a default rootfs.  You must specify a docker-image when using Diego-Edge.  You can mount the filesystem provided by diego-release by specifying `"root_fs": "docker:///cloudfoundry/lucid64"` or `"root_fs": "docker:///cloudfoundry/trusty64"`.
+> You *must* specify the dockerimage `rootfs` uri as specified, including the leading `docker://`!
+
+> [Lattice](https://github.com/pivotal-cf-experimental/lattice) does not ship with a default rootfs. You must specify a Docker image when using Lattice. You can mount the filesystem provided by diego-release by specifying `"rootfs": "docker:///cloudfoundry/lucid64"` or `"rootfs": "docker:///cloudfoundry/trusty64"`.
 
 #### `env` [optional]
 
@@ -112,28 +139,34 @@ For more details on the environment variables provided to processes in the conta
 
 #### `cpu_weight` [optional]
 
-To control the CPU shares provided to a container, set `cpu_weight`.  This must be a positive number in the range `1-100`.  The `cpu_weight` enforces a relative fair share of the CPU among containers.  It's best explained with examples.  Consider the following scenarios (we shall assume that each container is running a busy process that is attempting to consumer as many CPU resources as possible):
+To control the CPU shares provided to a container, set `cpu_weight`.  This must be a positive number in the range `1-100`.  The `cpu_weight` enforces a relative fair share of the CPU among containers.  It's best explained with examples.  Consider the following scenarios (we shall assume that each container is running a busy process that is attempting to consume as many CPU resources as possible):
 
 - Two containers, with equal values of `cpu_weight`: both containers will receive equal shares of CPU time.
-- Two containers, one with `cpu_weight=50` the other with `cpu_weight=100`: the latter will get (roughly) 2/3 of the CPU time, the former 1/3.
+- Two containers, one with `cpu_weight=50` the other with `cpu_weight=100`: the later will get (roughly) 2/3 of the CPU time, the former 1/3.
 
 #### `disk_mb` [optional]
 
 A disk quota applied to the entire container.  Any data written on top of the RootFS counts against the Disk Quota.  Processes that attempt to exceed this limit will not be allowed to write to disk.
 
-- `disk_mb` must be an integer > 0
+- `disk_mb` must be an integer >= 0
+- If set to 0 no disk constraints are applied to the container
 - The units are megabytes
 
 #### `memory_mb` [optional]
 
 A memory limit applied to the entire container.  If the aggregate memory consumption by all processs running in the container exceeds this value, the container will be destroyed.
 
-- `memory_mb` must be an integer > 0
+- `memory_mb` must be an integer >= 0
+- If set to 0 no memory constraints are applied to the container
 - The units are megabytes
+
+#### `privileged` [optional]
+
+If false, Diego will create a container that is in a user namespace.  Processes that succesfully obtain escalated privileges (i.e. root access) will actually only be root within the user namespace and will not be able to maliciously modify the host VM.  If true, Diego creates a container with no user namespace -- escalating to root gives the user *real* root access.
 
 #### Actions
 
-When an LRP instance is instantiated, a container is created with the specified `root_fs` mounted.  Diego is responsible for performing any container setup necessary to successfully launch processes and monitor said processes.
+When an LRP instance is instantiated, a container is created with the specified `rootfs` mounted.  Diego is responsible for performing any container setup necessary to successfully launch processes and monitor said processes.
 
 #### `setup` [optional]
 
@@ -155,9 +188,11 @@ If provided, Diego will give the `action` action up to `start_timeout` seconds t
 
 #### Networking
 
-Diego can open and expose arbitrary `ports` inside the container.  Currently, if at least one `port` is opened and `routes` are defined, Diego will automatically register the **first** port on the container with the [router](https://github.com/cloudfoundry/gorouter).  Consumers that attempt to access one of the routes in the `routes` array will be connected via the router to one of the ActualLRP instances currently running.
+Diego can open and expose arbitrary `ports` inside the container.  There are plans to generalize this support and make it possible to build custom service discovery solutions on top of Diego.  The API is likely to change in backward-incompatible ways as we work these requirements out.
 
-There are plans to generalize this interface and make it possible to build custom service discovery solutions on top of Diego.  The API is likely to change in backward-incompatible ways as we work these requirements out.
+By default network access for any container is limited but some LRPs might need specific network access and that can be setup using `egress_rules` field.  Rules are evaluated in reverse order of their position, i.e., the last one takes precedence.
+
+> Lattice users: Lattice is intended to be a single-tenant cluster environment.  In Lattice there are no network access constraints on the containers so there is no need to specify `egress_rules`.
 
 #### `ports` [optional]
 
@@ -165,11 +200,97 @@ There are plans to generalize this interface and make it possible to build custo
 
 #### `routes` [optional]
 
-`routes` are a list of fully qualified domain names (e.g. `"foo.example.com"`).  These routes are automatically registered with the router and point to the *first* port in the `ports` list.
+`routes` is a map where the keys identify route providers and the values hold information for the providers to consume.  The information in the map must be valid JSON but is not proessed by Diego.  The total length of the routing information must not exceed 4096 bytes.
 
+##### `cf-router` [optional]
+
+The route provider `cf-router` is used by the Diego [route emitter](https://github.com/cloudfoundry-incubator/route-emitter) to automatically register routes to the container with the [router](https://github.com/cloudfoundry/gorouter).  The routing information is a list of objects that associate a container port with a list of fully qualified host names (e.g. `"foo.example.com"`).  Consumers that attempt to access one of the hostnames via the router will be connected to one of the ActualLRP instances that is currently running.
+
+Example: `"cf-router": [{"port":8080, "hostnames":["foo.example.com"]}}]`
+
+#### `egress_rules` [optional]
+`egress_rules` are a list of egress firewall rules that are applied to a container running in Diego
+
+##### `protocol` [required]
+The protocol of the rule that can be one of the following `tcp`, `udp`,`icmp`, `all`.
+
+##### `destinations` [required]
+The destinations of the rule that is a list of either an IP Address (1.2.3.4) or an IP range (1.2.3.4-2.3.4.5) or a CIDR (1.2.3.4/5)
+
+##### `ports` [optional]
+A list of destination ports that are integers between 1 and 65535.
+> `ports` or `port_range` must be provided for `tcp` and `udp`.
+> It is an error when both are provided.
+
+##### `port_range` [optional]
+- `start` [required] the start of the range as an integer between 1 and 65535
+- `end` [required] the end of the range as an integer between 1 and 65535
+
+> `ports` or `port_range` must be provided for protocol `tcp` and `udp`.
+> It is an error when both are provided.
+
+##### `icmp_info` [optional]
+- `type` [required] will be an integer between 0 and 255
+- `code` [required] will be an integer
+
+> `icmp_info` is required for protocol `icmp`.
+> It is an error when provided for other protocols.
+
+##### `log` [optional]
+Enable logging of the rule
+> `log` is optional for `tcp` and `all`.
+> It is an error to provide `log` as true when protocol is `udp` or `icmp`.
+
+> Define all rules with `log` enabled at the end of your `egress_rules` to guarantee logging.
+
+##### Examples
+***
+`ALL`
+```
+{
+    "protocol": "all",
+    "destinations": ["1.2.3.4"],
+    "log": true
+}
+```
+***
+`TCP`
+```
+{
+    "protocol": "tcp",
+    "destinations": ["1.2.3.4-2.3.4.5"],
+    "ports": [80, 443],
+    "log": true
+}
+```
+***
+`UDP`
+```
+{
+    "protocol": "udp",
+    "destinations": ["1.2.3.4/4"],
+    "port_range": {
+        "start": 8000,
+        "end": 8085
+    }
+}
+```
+***
+`ICMP`
+```
+{
+    "protocol": "icmp",
+    "destinations": ["1.2.3.4", "2.3.4.5/6"],
+    "icmp_info": {
+        "type": 1,
+        "code": 40
+    }
+}
+```
+***
 #### Logging
 
-Diego uses [loggregator](https://github.com/cloudfoundry-incubator/loggregator) to emit logs generated by container processes to the user.
+Diego uses [loggregator](https://github.com/cloudfoundry/loggregator) to emit logs generated by container processes to the user.
 
 #### `log_guid` [optional]
 
@@ -225,9 +346,9 @@ The fact that a DesiredLRP is present in Diego does not mean that the correspond
 
 ## Fetching ActualLRPs
 
-As outlined above, DesiredLRPs represent the consumer's intent for Diego to run instances.  To fetch running instances consumers must [fetch ActualLRPs](api_lrps.md#fetching-actuallrps).
+As outlined above, DesiredLRPs represent the consumer's intent for Diego to run instances.  To fetch instances, consumers must [fetch ActualLRPs](api_lrps.md#fetching-actuallrps).
 
-When fetching ActualLRPs one can fetch *all* ActualLRPs in Diego, all ActualLRPs of a given `domain`, all ActualLRPs for a given DesiredLRP by `process_guid`, and all ActualLRPs at a given *index* for a given `process_guid`.
+When fetching ActualLRPs, one can fetch *all* ActualLRPs in Diego, all ActualLRPs of a given `domain`, all ActualLRPs for a given DesiredLRP by `process_guid`, and all ActualLRPs at a given *index* for a given `process_guid`.
 
 In all cases, the consumer is given an array of `ActualLRPResponse`:
 
@@ -239,13 +360,17 @@ In all cases, the consumer is given an array of `ActualLRPResponse`:
         "cell_id": "some-cell-id",
         "domain": "some-domain",
         "index": 15,
-        "state": "CLAIMED" or "RUNNING"
+        "state": "UNCLAIMED", "CLAIMED", "RUNNING" or "CRASHED"
 
         "address": "10.10.11.11",
         "ports": [
             {"container_port": 8080, "host_port": 60001},
-            {"container_port": 5000, "host_port": 60002},        
+            {"container_port": 5000, "host_port": 60002},
         ],
+
+        "placement_error": "insufficient resources",
+
+        "since": 1234567
     },
     ...
 ]
@@ -277,9 +402,23 @@ The `index` of the ActualLRP - an integer between `0` and `N-1` where `N` is the
 
 #### `state`
 
-The state of the ActualLRP.  When an ActualLRP is first scheduled onto a Cell it enters the `CLAIMED` state.  During this time a container is being created and the various processes inside the container are being spun up.
+The state of the ActualLRP.
 
-Once the `action` action begins running, Diego begins periodically running the `monitor` action.  As soon as the `monitor` action reports that the processes are healthy the ActualLRP will transition into the `RUNNING` state.
+When an ActualLRP is first created, it enters the `UNCLAIMED` state.
+
+Once the ActualLRP is placed onto a Cell it enters the `CLAIMED` state.  During this time a container is being created and the various processes inside the container are being spun up.
+
+When the `action` action begins running, Diego begins periodically running the `monitor` action.  As soon as the `monitor` action reports that the processes are healthy the ActualLRP will transition into the `RUNNING` state.
+
+#### `placement_error`
+
+When an ActualLRP cannot be placed because there are no resources to place it, the `placement_error` is populated with the reason.
+
+> `placement_error` is only populated when the ActualLRP is in the `UNCLAIMED` state.
+
+#### `since`
+
+The last modified time of the ActualLRP represented as the number of nanoseconds elapsed since January 1, 1970 UTC.
 
 #### Networking
 #### `address`

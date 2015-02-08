@@ -178,12 +178,7 @@ func (h *ActualLRPHandler) KillByProcessGuidAndIndex(w http.ResponseWriter, req 
 		return
 	}
 
-	err = h.bbs.RequestStopLRPInstance(actualLRP)
-	if err != nil {
-		logger.Error("failed-to-request-stop-lrp-instance", err)
-		writeUnknownErrorResponse(w, err)
-		return
-	}
+	h.bbs.RetireActualLRPs(logger, []models.ActualLRP{actualLRP})
 
 	w.WriteHeader(http.StatusNoContent)
 }

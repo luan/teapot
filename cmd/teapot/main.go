@@ -29,6 +29,12 @@ var receptorAddress = flag.String(
 	"The url for the receptor.",
 )
 
+var appsDomain = flag.String(
+	"appsDomain",
+	"",
+	"The apps domain that routes will use.",
+)
+
 var username = flag.String(
 	"username",
 	"",
@@ -48,10 +54,15 @@ func PrintUsageAndExit() {
 }
 
 func main() {
+	cf_lager.AddFlags(flag.CommandLine)
 	flag.Parse()
+
 	problems := []string{}
 	if len(*receptorAddress) == 0 {
 		problems = append(problems, "-receptorAddress")
+	}
+	if len(*appsDomain) == 0 {
+		problems = append(problems, "-appsDomain")
 	}
 	if len(*serverAddress) == 0 {
 		problems = append(problems, "-address")
@@ -62,10 +73,14 @@ func main() {
 		PrintUsageAndExit()
 	}
 
-	logger := cf_lager.New("teapot")
-	logger.Info("starting", lager.Data{"listen_address": *serverAddress, "receptor_address": *receptorAddress})
+	logger, _ := cf_lager.New("teapot")
+	logger.Info("starting", lager.Data{
+		"listen_address":   *serverAddress,
+		"receptor_address": *receptorAddress,
+		"apps_domain":      *appsDomain,
+	})
 	receptorClient := receptor.NewClient(*receptorAddress)
-	workstationManager := managers.NewWorkstationManager(receptorClient, logger)
+	workstationManager := managers.NewWorkstationManager(receptorClient, *appsDomain, logger)
 	handler := handlers.New(workstationManager, logger, *username, *password)
 
 	members := grouper.Members{

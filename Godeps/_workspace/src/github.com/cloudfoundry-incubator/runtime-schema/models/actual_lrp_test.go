@@ -3,6 +3,7 @@ package models_test
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
@@ -10,7 +11,188 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+func defaultCrashedActual(crashCount int, lastCrashed int64) models.ActualLRP {
+	return models.ActualLRP{
+		ActualLRPKey: models.NewActualLRPKey("p-guid", 0, "domain"),
+		State:        models.ActualLRPStateCrashed,
+		CrashCount:   crashCount,
+		Since:        lastCrashed,
+	}
+}
+
+type crashInfoTest interface {
+	Test()
+}
+
+type crashInfoTests []crashInfoTest
+
+func (tests crashInfoTests) Test() {
+	for _, test := range tests {
+		test.Test()
+	}
+}
+
+type crashInfoBackoffTest struct {
+	models.ActualLRP
+	WaitTime time.Duration
+}
+
+func newCrashInfoBackoffTest(crashCount int, lastCrashed int64, waitTime time.Duration) crashInfoTest {
+	return crashInfoBackoffTest{
+		ActualLRP: defaultCrashedActual(crashCount, lastCrashed),
+		WaitTime:  waitTime,
+	}
+}
+
+func (test crashInfoBackoffTest) Test() {
+	Context(fmt.Sprintf("when the crashCount is %d and the wait time is %s", test.CrashCount, test.WaitTime), func() {
+		It("should NOT restart before the expected wait time", func() {
+			calc := models.NewDefaultRestartCalculator()
+			currentTimestamp := test.Since + test.WaitTime.Nanoseconds() - time.Second.Nanoseconds()
+			Ω(test.ShouldRestartCrash(time.Unix(0, currentTimestamp), calc)).Should(BeFalse())
+		})
+
+		It("should restart after the expected wait time", func() {
+			calc := models.NewDefaultRestartCalculator()
+			currentTimestamp := test.Since + test.WaitTime.Nanoseconds()
+			Ω(test.ShouldRestartCrash(time.Unix(0, currentTimestamp), calc)).Should(BeTrue())
+		})
+	})
+}
+
+type crashInfoNeverStartTest struct {
+	models.ActualLRP
+}
+
+func newCrashInfoNeverStartTest(crashCount int, lastCrashed int64) crashInfoTest {
+	return crashInfoNeverStartTest{
+		ActualLRP: defaultCrashedActual(crashCount, lastCrashed),
+	}
+}
+
+func (test crashInfoNeverStartTest) Test() {
+	Context(fmt.Sprintf("when the crashCount is %d", test.CrashCount), func() {
+		It("should never restart regardless of the wait time", func() {
+			calc := models.NewDefaultRestartCalculator()
+			theFuture := test.Since + time.Hour.Nanoseconds()
+			Ω(test.ShouldRestartCrash(time.Unix(0, 0), calc)).Should(BeFalse())
+			Ω(test.ShouldRestartCrash(time.Unix(0, test.Since), calc)).Should(BeFalse())
+			Ω(test.ShouldRestartCrash(time.Unix(0, theFuture), calc)).Should(BeFalse())
+		})
+	})
+}
+
+type crashInfoAlwaysStartTest struct {
+	models.ActualLRP
+}
+
+func newCrashInfoAlwaysStartTest(crashCount int, lastCrashed int64) crashInfoTest {
+	return crashInfoAlwaysStartTest{
+		ActualLRP: defaultCrashedActual(crashCount, lastCrashed),
+	}
+}
+
+func (test crashInfoAlwaysStartTest) Test() {
+	Context(fmt.Sprintf("when the crashCount is %d", test.CrashCount), func() {
+		It("should restart regardless of the wait time", func() {
+			calc := models.NewDefaultRestartCalculator()
+			theFuture := test.Since + time.Hour.Nanoseconds()
+			Ω(test.ShouldRestartCrash(time.Unix(0, 0), calc)).Should(BeTrue())
+			Ω(test.ShouldRestartCrash(time.Unix(0, test.Since), calc)).Should(BeTrue())
+			Ω(test.ShouldRestartCrash(time.Unix(0, theFuture), calc)).Should(BeTrue())
+		})
+	})
+}
+
+func testBackoffCount(maxBackoffDuration time.Duration, expectedBackoffCount int) {
+	It(fmt.Sprintf("sets the MaxBackoffCount to %d based on the MaxBackoffDuration %s and the CrashBackoffMinDuration", expectedBackoffCount, maxBackoffDuration), func() {
+		calc := models.NewRestartCalculator(models.DefaultImmediateRestarts, maxBackoffDuration, models.DefaultMaxRestarts)
+		Ω(calc.MaxBackoffCount).Should(Equal(expectedBackoffCount))
+	})
+}
+
+var _ = Describe("RestartCalculator", func() {
+
+	Describe("NewRestartCalculator", func() {
+		testBackoffCount(20*time.Minute, 5)
+		testBackoffCount(16*time.Minute, 5)
+		testBackoffCount(8*time.Minute, 4)
+		testBackoffCount(119*time.Second, 2)
+		testBackoffCount(120*time.Second, 2)
+		testBackoffCount(models.CrashBackoffMinDuration, 0)
+
+		It("should work...", func() {
+			nanoseconds := func(seconds int) int64 {
+				return int64(seconds * 1000000000)
+			}
+
+			calc := models.NewRestartCalculator(3, 119*time.Second, 200)
+			Ω(calc.ShouldRestart(0, 0, 0)).Should(BeTrue())
+			Ω(calc.ShouldRestart(0, 0, 1)).Should(BeTrue())
+			Ω(calc.ShouldRestart(0, 0, 2)).Should(BeTrue())
+
+			Ω(calc.ShouldRestart(0, 0, 3)).Should(BeFalse())
+			Ω(calc.ShouldRestart(nanoseconds(30), 0, 3)).Should(BeTrue())
+
+			Ω(calc.ShouldRestart(nanoseconds(30), 0, 4)).Should(BeFalse())
+			Ω(calc.ShouldRestart(nanoseconds(59), 0, 4)).Should(BeFalse())
+			Ω(calc.ShouldRestart(nanoseconds(60), 0, 4)).Should(BeTrue())
+			Ω(calc.ShouldRestart(nanoseconds(60), 0, 5)).Should(BeFalse())
+			Ω(calc.ShouldRestart(nanoseconds(118), 0, 5)).Should(BeFalse())
+			Ω(calc.ShouldRestart(nanoseconds(119), 0, 5)).Should(BeTrue())
+		})
+	})
+
+	Describe("Validate", func() {
+		It("the default values are valid", func() {
+			calc := models.NewDefaultRestartCalculator()
+			Ω(calc.Validate()).ShouldNot(HaveOccurred())
+		})
+
+		It("invalid when MaxBackoffDuration is lower than the CrashBackoffMinDuration", func() {
+			calc := models.NewRestartCalculator(models.DefaultImmediateRestarts, models.CrashBackoffMinDuration-time.Second, models.DefaultMaxRestarts)
+			Ω(calc.Validate()).Should(HaveOccurred())
+		})
+	})
+})
+
 var _ = Describe("ActualLRP", func() {
+	Describe("ShouldRestartCrash", func() {
+		Context("when the lpr is CRASHED", func() {
+			const maxWaitTime = 16 * time.Minute
+			var now = time.Now().UnixNano()
+			var crashTests = crashInfoTests{
+				newCrashInfoAlwaysStartTest(0, now),
+				newCrashInfoAlwaysStartTest(1, now),
+				newCrashInfoAlwaysStartTest(2, now),
+				newCrashInfoBackoffTest(3, now, 30*time.Second),
+				newCrashInfoBackoffTest(7, now, 8*time.Minute),
+				newCrashInfoBackoffTest(8, now, maxWaitTime),
+				newCrashInfoBackoffTest(199, now, maxWaitTime),
+				newCrashInfoNeverStartTest(200, now),
+				newCrashInfoNeverStartTest(201, now),
+			}
+
+			crashTests.Test()
+		})
+
+		Context("when the lrp is not CRASHED", func() {
+			It("returns false", func() {
+				now := time.Now()
+				actual := defaultCrashedActual(0, now.UnixNano())
+				calc := models.NewDefaultRestartCalculator()
+				for _, state := range models.ActualLRPStates {
+					actual.State = state
+					if state == models.ActualLRPStateCrashed {
+						Ω(actual.ShouldRestartCrash(now, calc)).Should(BeTrue(), "should restart CRASHED lrp")
+					} else {
+						Ω(actual.ShouldRestartCrash(now, calc)).Should(BeFalse(), fmt.Sprintf("should not restart %s lrp", state))
+					}
+				}
+			})
+		})
+	})
+
 	Describe("ActualLRPKey", func() {
 		Describe("Validate", func() {
 			var actualLRPKey models.ActualLRPKey
@@ -92,6 +274,18 @@ var _ = Describe("ActualLRP", func() {
 				})
 			})
 		})
+
+		Describe("ActualLRPNetInfo", func() {
+			Describe("EmptyActualLRPNetInfo", func() {
+				It("returns a net info with an empty address and non-nil empty PortMapping slice", func() {
+					netInfo := models.EmptyActualLRPNetInfo()
+
+					Ω(netInfo.Address).Should(BeEmpty())
+					Ω(netInfo.Ports).ShouldNot(BeNil())
+					Ω(netInfo.Ports).Should(HaveLen(0))
+				})
+			})
+		})
 	})
 
 	Describe("ActualLRP", func() {
@@ -100,8 +294,6 @@ var _ = Describe("ActualLRP", func() {
 		var containerKey models.ActualLRPContainerKey
 		var netInfo models.ActualLRPNetInfo
 
-		BeforeEach(func() {
-		})
 		lrpPayload := `{
     "process_guid":"some-guid",
     "instance_guid":"some-instance-guid",
@@ -114,7 +306,8 @@ var _ = Describe("ActualLRP", func() {
     "state": "RUNNING",
     "since": 1138,
     "cell_id":"some-cell-id",
-    "domain":"some-domain"
+    "domain":"some-domain",
+		"crash_count": 1
   }`
 
 		BeforeEach(func() {
@@ -129,6 +322,7 @@ var _ = Describe("ActualLRP", func() {
 				ActualLRPKey:          lrpKey,
 				ActualLRPContainerKey: containerKey,
 				ActualLRPNetInfo:      netInfo,
+				CrashCount:            1,
 				State:                 models.ActualLRPStateRunning,
 				Since:                 1138,
 			}
@@ -297,6 +491,7 @@ var _ = Describe("ActualLRP", func() {
 				itValidatesPresenceOfTheLRPKey(&lrp)
 				itValidatesAbsenceOfTheContainerKey(&lrp)
 				itValidatesAbsenceOfNetInfo(&lrp)
+				itValidatesPresenceOfPlacementError(&lrp)
 			})
 
 			Context("when state is claimed", func() {
@@ -312,6 +507,7 @@ var _ = Describe("ActualLRP", func() {
 				itValidatesPresenceOfTheLRPKey(&lrp)
 				itValidatesPresenceOfTheContainerKey(&lrp)
 				itValidatesAbsenceOfNetInfo(&lrp)
+				itValidatesAbsenceOfPlacementError(&lrp)
 			})
 
 			Context("when state is running", func() {
@@ -328,6 +524,7 @@ var _ = Describe("ActualLRP", func() {
 				itValidatesPresenceOfTheLRPKey(&lrp)
 				itValidatesPresenceOfTheContainerKey(&lrp)
 				itValidatesPresenceOfNetInfo(&lrp)
+				itValidatesAbsenceOfPlacementError(&lrp)
 			})
 
 			Context("when state is not set", func() {
@@ -344,6 +541,7 @@ var _ = Describe("ActualLRP", func() {
 					Ω(err).Should(HaveOccurred())
 					Ω(err.Error()).Should(ContainSubstring("state"))
 				})
+
 			})
 
 			Context("when since is not set", func() {
@@ -360,6 +558,21 @@ var _ = Describe("ActualLRP", func() {
 					Ω(err).Should(HaveOccurred())
 					Ω(err.Error()).Should(ContainSubstring("since"))
 				})
+			})
+
+			Context("when state is crashed", func() {
+				BeforeEach(func() {
+					lrp = models.ActualLRP{
+						ActualLRPKey: lrpKey,
+						State:        models.ActualLRPStateCrashed,
+						Since:        1138,
+					}
+				})
+
+				itValidatesPresenceOfTheLRPKey(&lrp)
+				itValidatesAbsenceOfTheContainerKey(&lrp)
+				itValidatesAbsenceOfNetInfo(&lrp)
+				itValidatesAbsenceOfPlacementError(&lrp)
 			})
 		})
 	})
@@ -477,6 +690,52 @@ func itValidatesAbsenceOfNetInfo(lrp *models.ActualLRP) {
 	Context("when net info is not set", func() {
 		BeforeEach(func() {
 			lrp.ActualLRPNetInfo = models.ActualLRPNetInfo{}
+		})
+
+		It("validate does not return an error", func() {
+			Ω(lrp.Validate()).ShouldNot(HaveOccurred())
+		})
+	})
+}
+
+func itValidatesPresenceOfPlacementError(lrp *models.ActualLRP) {
+	Context("when placement error is set", func() {
+		BeforeEach(func() {
+			lrp.PlacementError = "insufficient capacity"
+		})
+
+		It("validate does not return an error", func() {
+			Ω(lrp.Validate()).ShouldNot(HaveOccurred())
+		})
+	})
+
+	Context("when placement error is not set", func() {
+		BeforeEach(func() {
+			lrp.PlacementError = ""
+		})
+
+		It("validate does not return an error", func() {
+			Ω(lrp.Validate()).ShouldNot(HaveOccurred())
+		})
+	})
+}
+
+func itValidatesAbsenceOfPlacementError(lrp *models.ActualLRP) {
+	Context("when placement error is set", func() {
+		BeforeEach(func() {
+			lrp.PlacementError = "insufficient capacity"
+		})
+
+		It("validate returns an error", func() {
+			err := lrp.Validate()
+			Ω(err).Should(HaveOccurred())
+			Ω(err.Error()).Should(ContainSubstring("placement error"))
+		})
+	})
+
+	Context("when placement error is not set", func() {
+		BeforeEach(func() {
+			lrp.PlacementError = ""
 		})
 
 		It("validate does not return an error", func() {

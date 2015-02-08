@@ -23,15 +23,17 @@ var taskGuidPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 type Task struct {
 	TaskGuid             string                `json:"task_guid"`
 	Domain               string                `json:"domain"`
-	RootFSPath           string                `json:"root_fs"`
+	RootFSPath           string                `json:"rootfs"`
 	Stack                string                `json:"stack"`
 	EnvironmentVariables []EnvironmentVariable `json:"env,omitempty"`
 	Action               Action                `json:"-"`
 	MemoryMB             int                   `json:"memory_mb"`
+	Privileged           bool                  `json:"privileged"`
 	DiskMB               int                   `json:"disk_mb"`
 	CPUWeight            uint                  `json:"cpu_weight"`
-	LogSource            string                `json:"log_source"`
 	LogGuid              string                `json:"log_guid"`
+	LogSource            string                `json:"log_source"`
+	MetricsGuid          string                `json:"metrics_guid"`
 	CreatedAt            int64                 `json:"created_at"` //  the number of nanoseconds elapsed since January 1, 1970 UTC
 	UpdatedAt            int64                 `json:"updated_at"`
 	FirstCompletedAt     int64                 `json:"first_completed_at"`
@@ -47,6 +49,8 @@ type Task struct {
 
 	CompletionCallbackURL *url.URL `json:"completion_callback_url,omitempty"`
 	Annotation            string   `json:"annotation,omitempty"`
+
+	EgressRules []SecurityGroupRule `json:"egress_rules,omitempty"`
 }
 
 type InnerTask Task
@@ -54,18 +58,6 @@ type InnerTask Task
 type mTask struct {
 	ActionRaw *json.RawMessage `json:"action,omitempty"`
 	*InnerTask
-}
-
-type StagingResult struct {
-	BuildpackKey         string            `json:"buildpack_key,omitempty"`
-	DetectedBuildpack    string            `json:"detected_buildpack"`
-	ExecutionMetadata    string            `json:"execution_metadata"`
-	DetectedStartCommand map[string]string `json:"detected_start_command"`
-}
-
-type StagingDockerResult struct {
-	ExecutionMetadata    string            `json:"execution_metadata"`
-	DetectedStartCommand map[string]string `json:"detected_start_command"`
 }
 
 type StagingTaskAnnotation struct {
@@ -124,6 +116,13 @@ func (task Task) Validate() error {
 
 	if len(task.Annotation) > maximumAnnotationLength {
 		validationError = validationError.Append(ErrInvalidField{"annotation"})
+	}
+
+	for _, rule := range task.EgressRules {
+		err := rule.Validate()
+		if err != nil {
+			validationError = validationError.Append(ErrInvalidField{"egress_rules"})
+		}
 	}
 
 	if !validationError.Empty() {

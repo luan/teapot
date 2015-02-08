@@ -2,29 +2,62 @@ package models
 
 import (
 	"encoding/json"
-	"reflect"
 	"regexp"
 )
 
+const maximumRouteLength = 4 * 1024
+
+type DomainSet map[string]struct{}
+
+func (set DomainSet) Add(domain string) {
+	set[domain] = struct{}{}
+}
+
+func (set DomainSet) Each(predicate func(domain string)) {
+	for domain := range set {
+		predicate(domain)
+	}
+}
+
+func (set DomainSet) Contains(domain string) bool {
+	_, found := set[domain]
+	return found
+}
+
+type DesiredLRPsByProcessGuid map[string]DesiredLRP
+
+func (set DesiredLRPsByProcessGuid) Add(desired DesiredLRP) {
+	set[desired.ProcessGuid] = desired
+}
+
+func (set DesiredLRPsByProcessGuid) Each(predicate func(desired DesiredLRP)) {
+	for _, desired := range set {
+		predicate(desired)
+	}
+}
+
 type DesiredLRP struct {
-	ProcessGuid          string                `json:"process_guid"`
-	Domain               string                `json:"domain"`
-	RootFSPath           string                `json:"root_fs"`
-	Instances            int                   `json:"instances"`
-	Stack                string                `json:"stack"`
-	EnvironmentVariables []EnvironmentVariable `json:"env,omitempty"`
-	Setup                Action                `json:"-"`
-	Action               Action                `json:"-"`
-	StartTimeout         uint                  `json:"start_timeout"`
-	Monitor              Action                `json:"-"`
-	DiskMB               int                   `json:"disk_mb"`
-	MemoryMB             int                   `json:"memory_mb"`
-	CPUWeight            uint                  `json:"cpu_weight"`
-	Ports                []uint32              `json:"ports"`
-	Routes               []string              `json:"routes"`
-	LogSource            string                `json:"log_source"`
-	LogGuid              string                `json:"log_guid"`
-	Annotation           string                `json:"annotation,omitempty"`
+	ProcessGuid          string                      `json:"process_guid"`
+	Domain               string                      `json:"domain"`
+	RootFSPath           string                      `json:"rootfs"`
+	Instances            int                         `json:"instances"`
+	Stack                string                      `json:"stack"`
+	EnvironmentVariables []EnvironmentVariable       `json:"env,omitempty"`
+	Setup                Action                      `json:"-"`
+	Action               Action                      `json:"-"`
+	StartTimeout         uint                        `json:"start_timeout"`
+	Monitor              Action                      `json:"-"`
+	DiskMB               int                         `json:"disk_mb"`
+	MemoryMB             int                         `json:"memory_mb"`
+	CPUWeight            uint                        `json:"cpu_weight"`
+	Privileged           bool                        `json:"privileged"`
+	Ports                []uint16                    `json:"ports"`
+	Routes               map[string]*json.RawMessage `json:"routes,omitempty"`
+	LogSource            string                      `json:"log_source"`
+	LogGuid              string                      `json:"log_guid"`
+	MetricsGuid          string                      `json:"metrics_guid"`
+	Annotation           string                      `json:"annotation,omitempty"`
+	EgressRules          []SecurityGroupRule         `json:"egress_rules,omitempty"`
 }
 
 type InnerDesiredLRP DesiredLRP
@@ -36,15 +69,15 @@ type mDesiredLRP struct {
 	*InnerDesiredLRP
 }
 
-type DesiredLRPChange struct {
-	Before *DesiredLRP
-	After  *DesiredLRP
+type DesiredLRPUpdate struct {
+	Instances  *int                        `json:"instances,omitempty"`
+	Routes     map[string]*json.RawMessage `json:"routes,omitempty"`
+	Annotation *string                     `json:"annotation,omitempty"`
 }
 
-type DesiredLRPUpdate struct {
-	Instances  *int
-	Routes     []string
-	Annotation *string
+type DesiredLRPChange struct {
+	Before DesiredLRP
+	After  DesiredLRP
 }
 
 func (desired DesiredLRP) ApplyUpdate(update DesiredLRPUpdate) DesiredLRP {
@@ -112,62 +145,21 @@ func (desired DesiredLRP) Validate() error {
 		validationError = validationError.Append(ErrInvalidField{"annotation"})
 	}
 
-	if !validationError.Empty() {
-		return validationError
+	totalRoutesLength := 0
+	for _, value := range desired.Routes {
+		totalRoutesLength += len(*value)
+		if totalRoutesLength > maximumRouteLength {
+			validationError = validationError.Append(ErrInvalidField{"routes"})
+			break
+		}
 	}
 
-	return nil
-}
-
-func (desired DesiredLRP) ValidateModifications(updatedModel DesiredLRP) error {
-	var validationError ValidationError
-
-	if desired.ProcessGuid != updatedModel.ProcessGuid {
-		validationError = validationError.Append(ErrInvalidModification{"process_guid"})
-	}
-
-	if desired.Domain != updatedModel.Domain {
-		validationError = validationError.Append(ErrInvalidModification{"domain"})
-	}
-
-	if desired.RootFSPath != updatedModel.RootFSPath {
-		validationError = validationError.Append(ErrInvalidModification{"root_fs"})
-	}
-
-	if desired.Stack != updatedModel.Stack {
-		validationError = validationError.Append(ErrInvalidModification{"stack"})
-	}
-
-	if !reflect.DeepEqual(desired.EnvironmentVariables, updatedModel.EnvironmentVariables) {
-		validationError = validationError.Append(ErrInvalidModification{"env"})
-	}
-
-	if !reflect.DeepEqual(desired.Action, updatedModel.Action) {
-		validationError = validationError.Append(ErrInvalidModification{"action"})
-	}
-
-	if desired.DiskMB != updatedModel.DiskMB {
-		validationError = validationError.Append(ErrInvalidModification{"disk_mb"})
-	}
-
-	if desired.MemoryMB != updatedModel.MemoryMB {
-		validationError = validationError.Append(ErrInvalidModification{"memory_mb"})
-	}
-
-	if desired.CPUWeight != updatedModel.CPUWeight {
-		validationError = validationError.Append(ErrInvalidModification{"cpu_weight"})
-	}
-
-	if !reflect.DeepEqual(desired.Ports, updatedModel.Ports) {
-		validationError = validationError.Append(ErrInvalidModification{"ports"})
-	}
-
-	if desired.LogSource != updatedModel.LogSource {
-		validationError = validationError.Append(ErrInvalidModification{"log_source"})
-	}
-
-	if desired.LogGuid != updatedModel.LogGuid {
-		validationError = validationError.Append(ErrInvalidModification{"log_guid"})
+	for _, rule := range desired.EgressRules {
+		err := rule.Validate()
+		if err != nil {
+			validationError = validationError.Append(ErrInvalidField{"egress_rules"})
+			validationError = validationError.Append(err)
+		}
 	}
 
 	if !validationError.Empty() {

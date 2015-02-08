@@ -17,7 +17,7 @@ var _ = Describe("DesiredLRP", func() {
 	lrpPayload := `{
 	  "process_guid": "some-guid",
 	  "domain": "some-domain",
-	  "root_fs": "docker:///docker.com/docker",
+	  "rootfs": "docker:///docker.com/docker",
 	  "instances": 1,
 	  "stack": "some-stack",
 		"annotation": "some-annotation",
@@ -54,18 +54,37 @@ var _ = Describe("DesiredLRP", func() {
 	  "disk_mb": 512,
 	  "memory_mb": 1024,
 	  "cpu_weight": 42,
+		"privileged": true,
 	  "ports": [
 	    5678
 	  ],
-	  "routes": [
-	    "route-1",
-	    "route-2"
-	  ],
+	  "routes": {
+	  	"router":	{"port": 8080,"hosts":["route-1","route-2"]}
+	  },
 	  "log_guid": "log-guid",
-	  "log_source": "the cloud"
+	  "log_source": "the cloud",
+		"metrics_guid": "metrics-guid",
+	  "egress_rules": [
+		  {
+				"protocol": "tcp",
+				"destinations": ["0.0.0.0/0"],
+				"port_range": {
+					"start": 1,
+					"end": 1024
+				},
+				"log": true
+			},
+		  {
+				"protocol": "udp",
+				"destinations": ["8.8.0.0/16"],
+				"ports": [53],
+				"log": false
+			}
+		]
 	}`
 
 	BeforeEach(func() {
+		rawMessage := json.RawMessage([]byte(`{"port": 8080,"hosts":["route-1","route-2"]}`))
 		lrp = DesiredLRP{
 			Domain:      "some-domain",
 			ProcessGuid: "some-guid",
@@ -76,13 +95,17 @@ var _ = Describe("DesiredLRP", func() {
 			MemoryMB:   1024,
 			DiskMB:     512,
 			CPUWeight:  42,
-			Routes:     []string{"route-1", "route-2"},
+			Privileged: true,
+			Routes: map[string]*json.RawMessage{
+				"router": &rawMessage,
+			},
 			Annotation: "some-annotation",
-			Ports: []uint32{
+			Ports: []uint16{
 				5678,
 			},
-			LogGuid:   "log-guid",
-			LogSource: "the cloud",
+			LogGuid:     "log-guid",
+			LogSource:   "the cloud",
+			MetricsGuid: "metrics-guid",
 			EnvironmentVariables: []EnvironmentVariable{
 				{
 					Name:  "ENV_VAR_NAME",
@@ -98,6 +121,22 @@ var _ = Describe("DesiredLRP", func() {
 			},
 			Monitor: &RunAction{
 				Path: "reboot",
+			},
+			EgressRules: []SecurityGroupRule{
+				{
+					Protocol:     "tcp",
+					Destinations: []string{"0.0.0.0/0"},
+					PortRange: &PortRange{
+						Start: 1,
+						End:   1024,
+					},
+					Log: true,
+				},
+				{
+					Protocol:     "udp",
+					Destinations: []string{"8.8.0.0/16"},
+					Ports:        []uint16{53},
+				},
 			},
 		}
 	})
@@ -124,11 +163,11 @@ var _ = Describe("DesiredLRP", func() {
 
 		It("allows empty routes to be set", func() {
 			update := DesiredLRPUpdate{
-				Routes: []string{},
+				Routes: map[string]*json.RawMessage{},
 			}
 
 			expectedLRP := lrp
-			expectedLRP.Routes = []string{}
+			expectedLRP.Routes = map[string]*json.RawMessage{}
 
 			updatedLRP := lrp.ApplyUpdate(update)
 			Ω(updatedLRP).Should(Equal(expectedLRP))
@@ -161,12 +200,17 @@ var _ = Describe("DesiredLRP", func() {
 		})
 
 		It("updates routes", func() {
+			rawMessage := json.RawMessage([]byte(`{"port": 8080,"hosts":["new-route-1","new-route-2"]}`))
 			update := DesiredLRPUpdate{
-				Routes: []string{"new-route-1", "new-route-2"},
+				Routes: map[string]*json.RawMessage{
+					"router": &rawMessage,
+				},
 			}
 
 			expectedLRP := lrp
-			expectedLRP.Routes = []string{"new-route-1", "new-route-2"}
+			expectedLRP.Routes = map[string]*json.RawMessage{
+				"router": &rawMessage,
+			}
 
 			updatedLRP := lrp.ApplyUpdate(update)
 			Ω(updatedLRP).Should(Equal(expectedLRP))
@@ -256,124 +300,23 @@ var _ = Describe("DesiredLRP", func() {
 			lrp.CPUWeight = 101
 			assertDesiredLRPValidationFailsWithMessage(lrp, "cpu_weight")
 		})
-	})
 
-	Describe("ValidateModifications", func() {
-		var newLrp DesiredLRP
-
-		BeforeEach(func() {
-			newLrp = lrp
+		Context("when security group is present", func() {
+			It("must be valid", func() {
+				lrp.EgressRules = []SecurityGroupRule{{
+					Protocol: "foo",
+				}}
+				assertDesiredLRPValidationFailsWithMessage(lrp, "egress_rules")
+			})
 		})
 
-		It("does allow the instances to change", func() {
-			newLrp.Instances = 5000
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
+		Context("when security group is not present", func() {
+			It("does not error", func() {
+				lrp.EgressRules = []SecurityGroupRule{}
 
-		It("does allow the routes to change", func() {
-			newLrp.Routes = []string{"my-new-route-1", "my-new-route-2"}
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		It("does allow the annotation to change", func() {
-			newLrp.Annotation = "new-annotation"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		It("does not allow the process-guid to change", func() {
-			newLrp.ProcessGuid = "new-process-guid"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("process_guid"))
-		})
-
-		It("does not allow the domain to change", func() {
-			newLrp.Domain = "new-domain"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("domain"))
-		})
-
-		It("does not allow the rootfs to change", func() {
-			newLrp.RootFSPath = "new-rootfs"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("root_fs"))
-		})
-
-		It("does not allow the stack to change", func() {
-			newLrp.Stack = "new-stack"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("stack"))
-		})
-
-		It("does not allow the env vars to change", func() {
-			newLrp.EnvironmentVariables = []EnvironmentVariable{
-				{
-					Name:  "NEW_ENV_VAR_NAME",
-					Value: "new environment variable value",
-				},
-			}
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("env"))
-		})
-
-		It("does not allow the actions to change", func() {
-			newLrp.Action = &UploadAction{
-				To:   "new-destination",
-				From: "new-source",
-			}
-
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("action"))
-		})
-
-		It("does not allow the disk size to change", func() {
-			newLrp.DiskMB = 128
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("disk_mb"))
-		})
-
-		It("does not allow the memory size to change", func() {
-			newLrp.MemoryMB = 64
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("memory_mb"))
-		})
-
-		It("does not allow the cpu weight to change", func() {
-			newLrp.CPUWeight = 4
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("cpu_weight"))
-		})
-
-		It("does not allow the ports to change", func() {
-			newLrp.Ports = []uint32{6789}
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("ports"))
-		})
-
-		It("does not allow the log guid to change", func() {
-			newLrp.LogGuid = "new-guid"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("log"))
-		})
-
-		It("does not allow the log source to change", func() {
-			newLrp.LogSource = "new-source"
-			err := lrp.ValidateModifications(newLrp)
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring("log"))
+				validationErr := lrp.Validate()
+				Ω(validationErr).ShouldNot(HaveOccurred())
+			})
 		})
 	})
 
@@ -467,16 +410,6 @@ var _ = Describe("DesiredLRP", func() {
 				"action":
 					{"download":{"from":"http://example.com","to":"/tmp/internet","cache_key":""}}
 			}`,
-			"annotation": `{
-				"stack": "some-stack",
-				"domain": "some-domain",
-				"process_guid": "process_guid",
-				"instances": 1,
-				"action": {
-					"download":{"from":"http://example.com","to":"/tmp/internet","cache_key":""}
-				},
-				"annotation":"` + strings.Repeat("a", 10*1024+1) + `"
-			}`,
 		} {
 			missingField := field
 			jsonBytes := payload
@@ -488,6 +421,44 @@ var _ = Describe("DesiredLRP", func() {
 					err := FromJSON([]byte(jsonBytes), decodedLRP)
 					Ω(err).Should(HaveOccurred())
 					Ω(err.Error()).Should(ContainSubstring(missingField))
+				})
+			})
+		}
+
+		for field, payload := range map[string]string{
+			"annotation": `{
+				"stack": "some-stack",
+				"domain": "some-domain",
+				"process_guid": "process_guid",
+				"instances": 1,
+				"action": {
+					"download":{"from":"http://example.com","to":"/tmp/internet","cache_key":""}
+				},
+				"annotation":"` + strings.Repeat("a", 10*1024+1) + `"
+			}`,
+			"routes": `{
+				"stack": "some-stack",
+				"domain": "some-domain",
+				"process_guid": "process_guid",
+				"instances": 1,
+				"action": {
+					"download":{"from":"http://example.com","to":"/tmp/internet","cache_key":""}
+				},
+				"routes": {
+					"cf-route": "` + strings.Repeat("r", 4*1024) + `"
+				}
+			}`,
+		} {
+			tooLongField := field
+			jsonBytes := payload
+
+			Context("when the json field "+tooLongField+" is too long", func() {
+				It("returns an error indicating so", func() {
+					decodedLRP := &DesiredLRP{}
+
+					err := FromJSON([]byte(jsonBytes), decodedLRP)
+					Ω(err).Should(HaveOccurred())
+					Ω(err.Error()).Should(ContainSubstring(tooLongField))
 				})
 			})
 		}

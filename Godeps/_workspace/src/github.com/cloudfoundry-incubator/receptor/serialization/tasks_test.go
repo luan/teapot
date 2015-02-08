@@ -25,13 +25,15 @@ var _ = Describe("Task Serialization", func() {
 					From: "from",
 					To:   "to",
 				},
-				Stack:      "the-stack",
-				MemoryMB:   100,
-				DiskMB:     100,
-				CPUWeight:  50,
-				LogGuid:    "the-log-config-guid",
-				LogSource:  "the-source-name",
-				Annotation: "the-annotation",
+				Stack:       "the-stack",
+				MemoryMB:    100,
+				DiskMB:      100,
+				CPUWeight:   50,
+				Privileged:  true,
+				LogGuid:     "the-log-guid",
+				LogSource:   "the-source-name",
+				MetricsGuid: "the-metrics-guid",
+				Annotation:  "the-annotation",
 
 				CreatedAt:     1234,
 				FailureReason: "the-failure-reason",
@@ -41,6 +43,14 @@ var _ = Describe("Task Serialization", func() {
 				EnvironmentVariables: []models.EnvironmentVariable{
 					{Name: "var1", Value: "val1"},
 					{Name: "var2", Value: "val2"},
+				},
+				EgressRules: []models.SecurityGroupRule{
+					{
+						Protocol:     "tcp",
+						Destinations: []string{"0.0.0.0/0"},
+						Ports:        []uint16{80, 443},
+						Log:          true,
+					},
 				},
 			}
 		})
@@ -72,13 +82,15 @@ var _ = Describe("Task Serialization", func() {
 					From: "from",
 					To:   "to",
 				},
-				Stack:      "the-stack",
-				MemoryMB:   100,
-				DiskMB:     100,
-				CPUWeight:  50,
-				LogGuid:    "the-log-config-guid",
-				LogSource:  "the-source-name",
-				Annotation: "the-annotation",
+				Stack:       "the-stack",
+				MemoryMB:    100,
+				DiskMB:      100,
+				CPUWeight:   50,
+				Privileged:  true,
+				LogGuid:     "the-log-guid",
+				LogSource:   "the-source-name",
+				MetricsGuid: "the-metrics-guid",
+				Annotation:  "the-annotation",
 
 				CreatedAt:     1234,
 				FailureReason: "the-failure-reason",
@@ -88,6 +100,14 @@ var _ = Describe("Task Serialization", func() {
 				EnvironmentVariables: []receptor.EnvironmentVariable{
 					{Name: "var1", Value: "val1"},
 					{Name: "var2", Value: "val2"},
+				},
+				EgressRules: []models.SecurityGroupRule{
+					{
+						Protocol:     "tcp",
+						Destinations: []string{"0.0.0.0/0"},
+						Ports:        []uint16{80, 443},
+						Log:          true,
+					},
 				},
 			}
 
@@ -127,18 +147,31 @@ var _ = Describe("Task Serialization", func() {
 				Action: &models.RunAction{
 					Path: "the-path",
 				},
-				Stack:      "the-stack",
-				MemoryMB:   100,
-				DiskMB:     100,
-				CPUWeight:  50,
-				LogGuid:    "the-log-config-guid",
-				LogSource:  "the-source-name",
-				ResultFile: "the/result/file",
-				Annotation: "the-annotation",
+				Stack:       "the-stack",
+				MemoryMB:    100,
+				DiskMB:      100,
+				CPUWeight:   50,
+				Privileged:  true,
+				LogGuid:     "the-log-guid",
+				LogSource:   "the-source-name",
+				MetricsGuid: "the-metrics-guid",
+				ResultFile:  "the/result/file",
+				Annotation:  "the-annotation",
 				EnvironmentVariables: []receptor.EnvironmentVariable{
 					{Name: "var1", Value: "val1"},
 					{Name: "var2", Value: "val2"},
-				}}
+				},
+				EgressRules: []models.SecurityGroupRule{
+					{
+						Protocol:     "tcp",
+						Destinations: []string{"0.0.0.0/0"},
+						PortRange: &models.PortRange{
+							Start: 1,
+							End:   1024,
+						},
+					},
+				},
+			}
 
 			expectedTask = models.Task{
 				TaskGuid:   "the-task-guid",
@@ -147,18 +180,31 @@ var _ = Describe("Task Serialization", func() {
 				Action: &models.RunAction{
 					Path: "the-path",
 				},
-				Stack:      "the-stack",
-				MemoryMB:   100,
-				DiskMB:     100,
-				CPUWeight:  50,
-				LogGuid:    "the-log-config-guid",
-				LogSource:  "the-source-name",
-				ResultFile: "the/result/file",
-				Annotation: "the-annotation",
+				Stack:       "the-stack",
+				MemoryMB:    100,
+				DiskMB:      100,
+				CPUWeight:   50,
+				Privileged:  true,
+				LogGuid:     "the-log-guid",
+				LogSource:   "the-source-name",
+				MetricsGuid: "the-metrics-guid",
+				ResultFile:  "the/result/file",
+				Annotation:  "the-annotation",
 				EnvironmentVariables: []models.EnvironmentVariable{
 					{Name: "var1", Value: "val1"},
 					{Name: "var2", Value: "val2"},
-				}}
+				},
+				EgressRules: []models.SecurityGroupRule{
+					{
+						Protocol:     "tcp",
+						Destinations: []string{"0.0.0.0/0"},
+						PortRange: &models.PortRange{
+							Start: 1,
+							End:   1024,
+						},
+					},
+				},
+			}
 		})
 
 		It("translates the request into a task model, preserving attributes", func() {

@@ -20,7 +20,7 @@ type FakeClient struct {
 	TasksStub        func() ([]receptor.TaskResponse, error)
 	tasksMutex       sync.RWMutex
 	tasksArgsForCall []struct{}
-	tasksReturns struct {
+	tasksReturns     struct {
 		result1 []receptor.TaskResponse
 		result2 error
 	}
@@ -95,7 +95,7 @@ type FakeClient struct {
 	DesiredLRPsStub        func() ([]receptor.DesiredLRPResponse, error)
 	desiredLRPsMutex       sync.RWMutex
 	desiredLRPsArgsForCall []struct{}
-	desiredLRPsReturns struct {
+	desiredLRPsReturns     struct {
 		result1 []receptor.DesiredLRPResponse
 		result2 error
 	}
@@ -111,7 +111,7 @@ type FakeClient struct {
 	ActualLRPsStub        func() ([]receptor.ActualLRPResponse, error)
 	actualLRPsMutex       sync.RWMutex
 	actualLRPsArgsForCall []struct{}
-	actualLRPsReturns struct {
+	actualLRPsReturns     struct {
 		result1 []receptor.ActualLRPResponse
 		result2 error
 	}
@@ -152,10 +152,17 @@ type FakeClient struct {
 	killActualLRPByProcessGuidAndIndexReturns struct {
 		result1 error
 	}
+	SubscribeToEventsStub        func() (receptor.EventSource, error)
+	subscribeToEventsMutex       sync.RWMutex
+	subscribeToEventsArgsForCall []struct{}
+	subscribeToEventsReturns     struct {
+		result1 receptor.EventSource
+		result2 error
+	}
 	CellsStub        func() ([]receptor.CellResponse, error)
 	cellsMutex       sync.RWMutex
 	cellsArgsForCall []struct{}
-	cellsReturns struct {
+	cellsReturns     struct {
 		result1 []receptor.CellResponse
 		result2 error
 	}
@@ -171,7 +178,7 @@ type FakeClient struct {
 	DomainsStub        func() ([]string, error)
 	domainsMutex       sync.RWMutex
 	domainsArgsForCall []struct{}
-	domainsReturns struct {
+	domainsReturns     struct {
 		result1 []string
 		result2 error
 	}
@@ -708,6 +715,31 @@ func (fake *FakeClient) KillActualLRPByProcessGuidAndIndexReturns(result1 error)
 	fake.killActualLRPByProcessGuidAndIndexReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeClient) SubscribeToEvents() (receptor.EventSource, error) {
+	fake.subscribeToEventsMutex.Lock()
+	fake.subscribeToEventsArgsForCall = append(fake.subscribeToEventsArgsForCall, struct{}{})
+	fake.subscribeToEventsMutex.Unlock()
+	if fake.SubscribeToEventsStub != nil {
+		return fake.SubscribeToEventsStub()
+	} else {
+		return fake.subscribeToEventsReturns.result1, fake.subscribeToEventsReturns.result2
+	}
+}
+
+func (fake *FakeClient) SubscribeToEventsCallCount() int {
+	fake.subscribeToEventsMutex.RLock()
+	defer fake.subscribeToEventsMutex.RUnlock()
+	return len(fake.subscribeToEventsArgsForCall)
+}
+
+func (fake *FakeClient) SubscribeToEventsReturns(result1 receptor.EventSource, result2 error) {
+	fake.SubscribeToEventsStub = nil
+	fake.subscribeToEventsReturns = struct {
+		result1 receptor.EventSource
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeClient) Cells() ([]receptor.CellResponse, error) {

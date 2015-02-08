@@ -21,7 +21,7 @@ var _ = Describe("LRPStartRequest", func() {
       "instances": 1,
       "stack": "some-stack",
       "start_timeout": 0,
-      "root_fs": "docker:///docker.com/docker",
+      "rootfs": "docker:///docker.com/docker",
       "action": {"download": {
           "from": "http://example.com",
           "to": "/tmp/internet",
@@ -31,19 +31,21 @@ var _ = Describe("LRPStartRequest", func() {
       "disk_mb": 512,
       "memory_mb": 1024,
       "cpu_weight": 42,
+			"privileged": false,
       "ports": [
         5678
       ],
-      "routes": [
-        "route-1",
-        "route-2"
-      ],
+      "routes": {
+        "router": {"port":5678,"hosts":["route-1","route-2"]}
+      },
       "log_guid": "log-guid",
-      "log_source": "the cloud"
+      "log_source": "the cloud",
+      "metrics_guid": "metrics-guid"
     },
     "indices": [2]
   }`
 
+		rawMessage := json.RawMessage([]byte(`{"port":5678,"hosts":["route-1","route-2"]}`))
 		lrpStart = LRPStartRequest{
 			Indices: []uint{2},
 
@@ -57,12 +59,15 @@ var _ = Describe("LRPStartRequest", func() {
 				MemoryMB:   1024,
 				DiskMB:     512,
 				CPUWeight:  42,
-				Routes:     []string{"route-1", "route-2"},
-				Ports: []uint32{
+				Routes: map[string]*json.RawMessage{
+					"router": &rawMessage,
+				},
+				Ports: []uint16{
 					5678,
 				},
-				LogGuid:   "log-guid",
-				LogSource: "the cloud",
+				LogGuid:     "log-guid",
+				LogSource:   "the cloud",
+				MetricsGuid: "metrics-guid",
 				Action: &DownloadAction{
 					From: "http://example.com",
 					To:   "/tmp/internet",
@@ -111,7 +116,7 @@ var _ = Describe("LRPStartRequest", func() {
       "instances": 1,
       "stack": "some-stack",
       "start_timeout": 0,
-      "root_fs": "docker:///docker.com/docker",
+      "rootfs": "docker:///docker.com/docker",
       "action": {"download": {
           "from": "http://example.com",
           "to": "/tmp/internet",
@@ -124,10 +129,9 @@ var _ = Describe("LRPStartRequest", func() {
       "ports": [
         5678
       ],
-      "routes": [
-        "route-1",
-        "route-2"
-      ],
+      "routes": {
+        "router": {"port":5678,"hosts":["route-1","route-2"]}
+      },
       "log_guid": "log-guid",
       "log_source": "the cloud"
     },
@@ -150,7 +154,7 @@ var _ = Describe("LRPStartRequest", func() {
       "instances": 1,
       "stack": "some-stack",
       "start_timeout": 0,
-      "root_fs": "docker:///docker.com/docker",
+      "rootfs": "docker:///docker.com/docker",
       "action": {"download": {
           "from": "http://example.com",
           "to": "/tmp/internet",
@@ -163,10 +167,9 @@ var _ = Describe("LRPStartRequest", func() {
       "ports": [
         5678
       ],
-      "routes": [
-        "route-1",
-        "route-2"
-      ],
+      "routes": {
+        "router": {"port":5678,"hosts":["route-1","route-2"]}
+      },
       "log_guid": "log-guid",
       "log_source": "the cloud"
     }
@@ -188,7 +191,7 @@ var _ = Describe("LRPStartRequest", func() {
       "instances": 1,
       "stack": "some-stack",
       "start_timeout": 0,
-      "root_fs": "docker:///docker.com/docker",
+      "rootfs": "docker:///docker.com/docker",
       "action": {"download": {
           "from": "http://example.com",
           "to": "/tmp/internet",
@@ -201,10 +204,9 @@ var _ = Describe("LRPStartRequest", func() {
       "ports": [
         5678
       ],
-      "routes": [
-        "route-1",
-        "route-2"
-      ],
+      "routes": {
+        "router": {"port":5678,"hosts":["route-1","route-2"]}
+      },
       "log_guid": "log-guid",
       "log_source": "the cloud"
     },

@@ -9,13 +9,14 @@ import (
 	"github.com/cloudfoundry-incubator/receptor/cmd/receptor/testrunner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/diegonats"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -76,8 +77,7 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 var _ = BeforeEach(func() {
-	logger = lager.NewLogger("test")
-	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
+	logger = lagertest.NewTestLogger("test")
 
 	natsPort = 4051 + GinkgoParallelNode()
 	natsAddress = fmt.Sprintf("127.0.0.1:%d", natsPort)
@@ -90,7 +90,7 @@ var _ = BeforeEach(func() {
 	etcdRunner.Start()
 
 	etcdAdapter = etcdRunner.Adapter()
-	bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	bbs = Bbs.NewBBS(etcdAdapter, clock.NewClock(), logger)
 
 	receptorAddress = fmt.Sprintf("127.0.0.1:%d", 6700+GinkgoParallelNode())
 	receptorTaskHandlerAddress = fmt.Sprintf("127.0.0.1:%d", 1169+GinkgoParallelNode())

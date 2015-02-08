@@ -12,8 +12,8 @@ type EnvironmentVariable struct {
 }
 
 type PortMapping struct {
-	ContainerPort uint32 `json:"container_port"`
-	HostPort      uint32 `json:"host_port,omitempty"`
+	ContainerPort uint16 `json:"container_port"`
+	HostPort      uint16 `json:"host_port,omitempty"`
 }
 
 const (
@@ -25,20 +25,23 @@ const (
 )
 
 type TaskCreateRequest struct {
-	Action                models.Action         `json:"-"`
-	Annotation            string                `json:"annotation,omitempty"`
-	CompletionCallbackURL string                `json:"completion_callback_url"`
-	CPUWeight             uint                  `json:"cpu_weight"`
-	DiskMB                int                   `json:"disk_mb"`
-	Domain                string                `json:"domain"`
-	LogGuid               string                `json:"log_guid"`
-	LogSource             string                `json:"log_source"`
-	MemoryMB              int                   `json:"memory_mb"`
-	ResultFile            string                `json:"result_file"`
-	Stack                 string                `json:"stack"`
-	TaskGuid              string                `json:"task_guid"`
-	RootFSPath            string                `json:"root_fs"`
-	EnvironmentVariables  []EnvironmentVariable `json:"env,omitempty"`
+	Action                models.Action              `json:"-"`
+	Annotation            string                     `json:"annotation,omitempty"`
+	CompletionCallbackURL string                     `json:"completion_callback_url"`
+	CPUWeight             uint                       `json:"cpu_weight"`
+	DiskMB                int                        `json:"disk_mb"`
+	Domain                string                     `json:"domain"`
+	LogGuid               string                     `json:"log_guid"`
+	LogSource             string                     `json:"log_source"`
+	MetricsGuid           string                     `json:"metrics_guid"`
+	MemoryMB              int                        `json:"memory_mb"`
+	ResultFile            string                     `json:"result_file"`
+	Stack                 string                     `json:"stack"`
+	TaskGuid              string                     `json:"task_guid"`
+	RootFSPath            string                     `json:"rootfs"`
+	Privileged            bool                       `json:"privileged"`
+	EnvironmentVariables  []EnvironmentVariable      `json:"env,omitempty"`
+	EgressRules           []models.SecurityGroupRule `json:"egress_rules,omitempty"`
 }
 
 type InnerTaskCreateRequest TaskCreateRequest
@@ -85,26 +88,29 @@ func (request *TaskCreateRequest) UnmarshalJSON(payload []byte) error {
 }
 
 type TaskResponse struct {
-	Action                models.Action         `json:"-"`
-	Annotation            string                `json:"annotation,omitempty"`
-	CompletionCallbackURL string                `json:"completion_callback_url"`
-	CPUWeight             uint                  `json:"cpu_weight"`
-	DiskMB                int                   `json:"disk_mb"`
-	Domain                string                `json:"domain"`
-	LogGuid               string                `json:"log_guid"`
-	LogSource             string                `json:"log_source"`
-	MemoryMB              int                   `json:"memory_mb"`
-	ResultFile            string                `json:"result_file"`
-	Stack                 string                `json:"stack"`
-	TaskGuid              string                `json:"task_guid"`
-	RootFSPath            string                `json:"root_fs"`
-	EnvironmentVariables  []EnvironmentVariable `json:"env,omitempty"`
-	CellID                string                `json:"cell_id"`
-	CreatedAt             int64                 `json:"created_at"`
-	Failed                bool                  `json:"failed"`
-	FailureReason         string                `json:"failure_reason"`
-	Result                string                `json:"result"`
-	State                 string                `json:"state"`
+	Action                models.Action              `json:"-"`
+	Annotation            string                     `json:"annotation,omitempty"`
+	CompletionCallbackURL string                     `json:"completion_callback_url"`
+	CPUWeight             uint                       `json:"cpu_weight"`
+	DiskMB                int                        `json:"disk_mb"`
+	Domain                string                     `json:"domain"`
+	LogGuid               string                     `json:"log_guid"`
+	LogSource             string                     `json:"log_source"`
+	MetricsGuid           string                     `json:"metrics_guid"`
+	MemoryMB              int                        `json:"memory_mb"`
+	ResultFile            string                     `json:"result_file"`
+	Stack                 string                     `json:"stack"`
+	TaskGuid              string                     `json:"task_guid"`
+	RootFSPath            string                     `json:"rootfs"`
+	Privileged            bool                       `json:"privileged"`
+	EnvironmentVariables  []EnvironmentVariable      `json:"env,omitempty"`
+	CellID                string                     `json:"cell_id"`
+	CreatedAt             int64                      `json:"created_at"`
+	Failed                bool                       `json:"failed"`
+	FailureReason         string                     `json:"failure_reason"`
+	Result                string                     `json:"result"`
+	State                 string                     `json:"state"`
+	EgressRules           []models.SecurityGroupRule `json:"egress_rules,omitempty"`
 }
 
 type InnerTaskResponse TaskResponse
@@ -150,25 +156,30 @@ func (response *TaskResponse) UnmarshalJSON(payload []byte) error {
 	return nil
 }
 
+type RoutingInfo map[string]*json.RawMessage
+
 type DesiredLRPCreateRequest struct {
-	ProcessGuid          string                `json:"process_guid"`
-	Domain               string                `json:"domain"`
-	RootFSPath           string                `json:"root_fs"`
-	Instances            int                   `json:"instances"`
-	Stack                string                `json:"stack"`
-	EnvironmentVariables []EnvironmentVariable `json:"env,omitempty"`
-	Setup                models.Action         `json:"-"`
-	Action               models.Action         `json:"-"`
-	Monitor              models.Action         `json:"-"`
-	StartTimeout         uint                  `json:"start_timeout"`
-	DiskMB               int                   `json:"disk_mb"`
-	MemoryMB             int                   `json:"memory_mb"`
-	CPUWeight            uint                  `json:"cpu_weight"`
-	Ports                []uint32              `json:"ports"`
-	Routes               []string              `json:"routes"`
-	LogGuid              string                `json:"log_guid"`
-	LogSource            string                `json:"log_source"`
-	Annotation           string                `json:"annotation,omitempty"`
+	ProcessGuid          string                     `json:"process_guid"`
+	Domain               string                     `json:"domain"`
+	RootFSPath           string                     `json:"rootfs"`
+	Instances            int                        `json:"instances"`
+	Stack                string                     `json:"stack"`
+	EnvironmentVariables []EnvironmentVariable      `json:"env,omitempty"`
+	Setup                models.Action              `json:"-"`
+	Action               models.Action              `json:"-"`
+	Monitor              models.Action              `json:"-"`
+	StartTimeout         uint                       `json:"start_timeout"`
+	DiskMB               int                        `json:"disk_mb"`
+	MemoryMB             int                        `json:"memory_mb"`
+	CPUWeight            uint                       `json:"cpu_weight"`
+	Privileged           bool                       `json:"privileged"`
+	Ports                []uint16                   `json:"ports"`
+	Routes               RoutingInfo                `json:"routes,omitempty"`
+	LogGuid              string                     `json:"log_guid"`
+	LogSource            string                     `json:"log_source"`
+	MetricsGuid          string                     `json:"metrics_guid"`
+	Annotation           string                     `json:"annotation,omitempty"`
+	EgressRules          []models.SecurityGroupRule `json:"egress_rules,omitempty"`
 }
 
 type InnerDesiredLRPCreateRequest DesiredLRPCreateRequest
@@ -264,30 +275,33 @@ func (request *DesiredLRPCreateRequest) UnmarshalJSON(payload []byte) error {
 }
 
 type DesiredLRPUpdateRequest struct {
-	Instances  *int     `json:"instances,omitempty"`
-	Routes     []string `json:"routes,omitempty"`
-	Annotation *string  `json:"annotation,omitempty"`
+	Instances  *int        `json:"instances,omitempty"`
+	Routes     RoutingInfo `json:"routes,omitempty"`
+	Annotation *string     `json:"annotation,omitempty"`
 }
 
 type DesiredLRPResponse struct {
-	ProcessGuid          string                `json:"process_guid"`
-	Domain               string                `json:"domain"`
-	RootFSPath           string                `json:"root_fs"`
-	Instances            int                   `json:"instances"`
-	Stack                string                `json:"stack"`
-	EnvironmentVariables []EnvironmentVariable `json:"env,omitempty"`
-	Setup                models.Action         `json:"setup"`
-	Action               models.Action         `json:"action"`
-	Monitor              models.Action         `json:"monitor"`
-	StartTimeout         uint                  `json:"start_timeout"`
-	DiskMB               int                   `json:"disk_mb"`
-	MemoryMB             int                   `json:"memory_mb"`
-	CPUWeight            uint                  `json:"cpu_weight"`
-	Ports                []uint32              `json:"ports"`
-	Routes               []string              `json:"routes"`
-	LogGuid              string                `json:"log_guid"`
-	LogSource            string                `json:"log_source"`
-	Annotation           string                `json:"annotation,omitempty"`
+	ProcessGuid          string                     `json:"process_guid"`
+	Domain               string                     `json:"domain"`
+	RootFSPath           string                     `json:"rootfs"`
+	Instances            int                        `json:"instances"`
+	Stack                string                     `json:"stack"`
+	EnvironmentVariables []EnvironmentVariable      `json:"env,omitempty"`
+	Setup                models.Action              `json:"setup"`
+	Action               models.Action              `json:"action"`
+	Monitor              models.Action              `json:"monitor"`
+	StartTimeout         uint                       `json:"start_timeout"`
+	DiskMB               int                        `json:"disk_mb"`
+	MemoryMB             int                        `json:"memory_mb"`
+	CPUWeight            uint                       `json:"cpu_weight"`
+	Privileged           bool                       `json:"privileged"`
+	Ports                []uint16                   `json:"ports"`
+	Routes               RoutingInfo                `json:"routes,omitempty"`
+	LogGuid              string                     `json:"log_guid"`
+	LogSource            string                     `json:"log_source"`
+	MetricsGuid          string                     `json:"metrics_guid"`
+	Annotation           string                     `json:"annotation,omitempty"`
+	EgressRules          []models.SecurityGroupRule `json:"egress_rules,omitempty"`
 }
 
 type InnerDesiredLRPResponse DesiredLRPResponse
@@ -388,21 +402,125 @@ const (
 	ActualLRPStateUnclaimed ActualLRPState = "UNCLAIMED"
 	ActualLRPStateClaimed   ActualLRPState = "CLAIMED"
 	ActualLRPStateRunning   ActualLRPState = "RUNNING"
+	ActualLRPStateCrashed   ActualLRPState = "CRASHED"
 )
 
 type ActualLRPResponse struct {
-	ProcessGuid  string         `json:"process_guid"`
-	InstanceGuid string         `json:"instance_guid"`
-	CellID       string         `json:"cell_id"`
-	Domain       string         `json:"domain"`
-	Index        int            `json:"index"`
-	Address      string         `json:"address"`
-	Ports        []PortMapping  `json:"ports"`
-	State        ActualLRPState `json:"state"`
-	Since        int64          `json:"since"`
+	ProcessGuid    string         `json:"process_guid"`
+	InstanceGuid   string         `json:"instance_guid"`
+	CellID         string         `json:"cell_id"`
+	Domain         string         `json:"domain"`
+	Index          int            `json:"index"`
+	Address        string         `json:"address"`
+	Ports          []PortMapping  `json:"ports"`
+	State          ActualLRPState `json:"state"`
+	CrashCount     int            `json:"crash_count"`
+	PlacementError string         `json:"placement_error,omitempty"`
+	Since          int64          `json:"since"`
 }
 
 type CellResponse struct {
-	CellID string `json:"cell_id"`
-	Stack  string `json:"stack"`
+	CellID   string       `json:"cell_id"`
+	Stack    string       `json:"stack"`
+	Zone     string       `json:"zone"`
+	Capacity CellCapacity `json:"capacity"`
 }
+
+type CellCapacity struct {
+	MemoryMB   int `json:"memory_mb"`
+	DiskMB     int `json:"disk_mb"`
+	Containers int `json:"containers"`
+}
+
+type Event interface {
+	EventType() EventType
+}
+
+type EventType string
+
+const (
+	EventTypeInvalid EventType = ""
+
+	EventTypeDesiredLRPCreated EventType = "desired_lrp_created"
+	EventTypeDesiredLRPChanged EventType = "desired_lrp_changed"
+	EventTypeDesiredLRPRemoved EventType = "desired_lrp_removed"
+	EventTypeActualLRPCreated  EventType = "actual_lrp_created"
+	EventTypeActualLRPChanged  EventType = "actual_lrp_changed"
+	EventTypeActualLRPRemoved  EventType = "actual_lrp_removed"
+)
+
+type DesiredLRPCreatedEvent struct {
+	DesiredLRPResponse DesiredLRPResponse `json:"desired_lrp"`
+}
+
+func NewDesiredLRPCreatedEvent(desiredLRP DesiredLRPResponse) DesiredLRPCreatedEvent {
+	return DesiredLRPCreatedEvent{
+		DesiredLRPResponse: desiredLRP,
+	}
+}
+
+func (DesiredLRPCreatedEvent) EventType() EventType { return EventTypeDesiredLRPCreated }
+
+type DesiredLRPChangedEvent struct {
+	Before DesiredLRPResponse `json:"desired_lrp_before"`
+	After  DesiredLRPResponse `json:"desired_lrp_after"`
+}
+
+func NewDesiredLRPChangedEvent(before, after DesiredLRPResponse) DesiredLRPChangedEvent {
+	return DesiredLRPChangedEvent{
+		Before: before,
+		After:  after,
+	}
+}
+
+func (DesiredLRPChangedEvent) EventType() EventType { return EventTypeDesiredLRPChanged }
+
+type DesiredLRPRemovedEvent struct {
+	DesiredLRPResponse DesiredLRPResponse `json:"desired_lrp"`
+}
+
+func NewDesiredLRPRemovedEvent(desiredLRP DesiredLRPResponse) DesiredLRPRemovedEvent {
+	return DesiredLRPRemovedEvent{
+		DesiredLRPResponse: desiredLRP,
+	}
+}
+
+func (DesiredLRPRemovedEvent) EventType() EventType { return EventTypeDesiredLRPRemoved }
+
+type ActualLRPCreatedEvent struct {
+	ActualLRPResponse ActualLRPResponse `json:"actual_lrp"`
+}
+
+func NewActualLRPCreatedEvent(actualLRP ActualLRPResponse) ActualLRPCreatedEvent {
+	return ActualLRPCreatedEvent{
+		ActualLRPResponse: actualLRP,
+	}
+}
+
+func (ActualLRPCreatedEvent) EventType() EventType { return EventTypeActualLRPCreated }
+
+type ActualLRPChangedEvent struct {
+	Before ActualLRPResponse `json:"actual_lrp_before"`
+	After  ActualLRPResponse `json:"actual_lrp_after"`
+}
+
+func NewActualLRPChangedEvent(before, after ActualLRPResponse) ActualLRPChangedEvent {
+	return ActualLRPChangedEvent{
+		Before: before,
+		After:  after,
+	}
+}
+
+func (ActualLRPChangedEvent) EventType() EventType { return EventTypeActualLRPChanged }
+
+type ActualLRPRemovedEvent struct {
+	ActualLRPResponse ActualLRPResponse `json:"actual_lrp"`
+}
+
+func NewActualLRPRemovedEvent(actualLRP ActualLRPResponse) ActualLRPRemovedEvent {
+	return ActualLRPRemovedEvent{
+		ActualLRPResponse: actualLRP,
+	}
+}
+
+func (ActualLRPRemovedEvent) EventType() EventType { return EventTypeActualLRPRemoved }

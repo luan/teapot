@@ -39,6 +39,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 			Domain:      "the-domain",
 			Stack:       "the-stack",
 			RootFSPath:  "the-rootfs-path",
+			Privileged:  true,
 			Instances:   1,
 			Action: &models.RunAction{
 				Path: "the-path",
@@ -50,6 +51,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 			Domain:      "the-domain",
 			Stack:       "the-stack",
 			RootFSPath:  "the-rootfs-path",
+			Privileged:  true,
 			Instances:   1,
 			Action: &models.RunAction{
 				Path: "the-path",
@@ -64,7 +66,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 
 			It("calls DesireLRP on the BBS", func() {
 				Ω(fakeBBS.DesireLRPCallCount()).Should(Equal(1))
-				desired := fakeBBS.DesireLRPArgsForCall(0)
+				_, desired := fakeBBS.DesireLRPArgsForCall(0)
 				Ω(desired).To(Equal(expectedDesiredLRP))
 			})
 
@@ -86,7 +88,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 
 			It("calls DesireLRP on the BBS", func() {
 				Ω(fakeBBS.DesireLRPCallCount()).Should(Equal(1))
-				desired := fakeBBS.DesireLRPArgsForCall(0)
+				_, desired := fakeBBS.DesireLRPArgsForCall(0)
 				Ω(desired).To(Equal(expectedDesiredLRP))
 			})
 
@@ -122,6 +124,27 @@ var _ = Describe("Desired LRP Handlers", func() {
 				expectedBody, _ := json.Marshal(receptor.Error{
 					Type:    receptor.InvalidLRP,
 					Message: validationError.Error(),
+				})
+				Ω(responseRecorder.Body.String()).Should(Equal(string(expectedBody)))
+			})
+		})
+
+		Context("when the desired LRP already exists", func() {
+			BeforeEach(func(done Done) {
+				fakeBBS.DesireLRPReturns(bbserrors.ErrStoreResourceExists)
+
+				defer close(done)
+				handler.Create(responseRecorder, newTestRequest(validCreateLRPRequest))
+			})
+
+			It("responds with 409 CONFLICT", func() {
+				Ω(responseRecorder.Code).Should(Equal(http.StatusConflict))
+			})
+
+			It("responds with a relevant error message", func() {
+				expectedBody, _ := json.Marshal(receptor.Error{
+					Type:    receptor.DesiredLRPAlreadyExists,
+					Message: "Desired LRP with guid 'the-process-guid' already exists",
 				})
 				Ω(responseRecorder.Body.String()).Should(Equal(string(expectedBody)))
 			})
@@ -255,12 +278,19 @@ var _ = Describe("Desired LRP Handlers", func() {
 		expectedProcessGuid := "some-guid"
 		instances := 15
 		annotation := "new-annotation"
-		routes := []string{"new-route-1", "new-route-2"}
+
+		routeMessage := json.RawMessage(`[{"port":8080,"hostnames":["new-route-1","new-route-2"]}]`)
+		routes := map[string]*json.RawMessage{
+			"cf-router": &routeMessage,
+		}
+		routingInfo := receptor.RoutingInfo{
+			"cf-router": &routeMessage,
+		}
 
 		validUpdateRequest := receptor.DesiredLRPUpdateRequest{
 			Instances:  &instances,
 			Annotation: &annotation,
-			Routes:     routes,
+			Routes:     routingInfo,
 		}
 
 		expectedUpdate := models.DesiredLRPUpdate{
@@ -284,7 +314,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 
 			It("calls UpdateDesiredLRP on the BBS", func() {
 				Ω(fakeBBS.UpdateDesiredLRPCallCount()).Should(Equal(1))
-				processGuid, update := fakeBBS.UpdateDesiredLRPArgsForCall(0)
+				_, processGuid, update := fakeBBS.UpdateDesiredLRPArgsForCall(0)
 				Ω(processGuid).Should(Equal(expectedProcessGuid))
 				Ω(update).Should(Equal(expectedUpdate))
 			})
@@ -331,7 +361,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 
 			It("calls UpdateDesiredLRP on the BBS", func() {
 				Ω(fakeBBS.UpdateDesiredLRPCallCount()).Should(Equal(1))
-				processGuid, update := fakeBBS.UpdateDesiredLRPArgsForCall(0)
+				_, processGuid, update := fakeBBS.UpdateDesiredLRPArgsForCall(0)
 				Ω(processGuid).Should(Equal(expectedProcessGuid))
 				Ω(update).Should(Equal(expectedUpdate))
 			})
@@ -359,7 +389,7 @@ var _ = Describe("Desired LRP Handlers", func() {
 
 			It("calls UpdateDesiredLRP on the BBS", func() {
 				Ω(fakeBBS.UpdateDesiredLRPCallCount()).Should(Equal(1))
-				processGuid, update := fakeBBS.UpdateDesiredLRPArgsForCall(0)
+				_, processGuid, update := fakeBBS.UpdateDesiredLRPArgsForCall(0)
 				Ω(processGuid).Should(Equal(expectedProcessGuid))
 				Ω(update).Should(Equal(expectedUpdate))
 			})
@@ -426,7 +456,8 @@ var _ = Describe("Desired LRP Handlers", func() {
 
 			It("calls the BBS to remove the desired LRP", func() {
 				Ω(fakeBBS.RemoveDesiredLRPByProcessGuidCallCount()).Should(Equal(1))
-				Ω(fakeBBS.RemoveDesiredLRPByProcessGuidArgsForCall(0)).Should(Equal("process-guid-0"))
+				_, actualProcessGuid := fakeBBS.RemoveDesiredLRPByProcessGuidArgsForCall(0)
+				Ω(actualProcessGuid).Should(Equal("process-guid-0"))
 			})
 
 			It("responds with 204 NO CONTENT", func() {

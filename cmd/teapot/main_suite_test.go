@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	username = "username"
-	password = "password"
+	username   = "username"
+	password   = "password"
+	appsDomain = "tiego.com"
 )
 
 var logger lager.Logger
@@ -75,6 +76,7 @@ var _ = BeforeEach(func() {
 		ReceptorAddress: receptorServer.URL(),
 		Username:        username,
 		Password:        password,
+		AppsDomain:      appsDomain,
 	}
 	teapotRunner = testrunner.New(teapotBinPath, teapotArgs)
 })

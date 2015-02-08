@@ -39,11 +39,16 @@ func (h *DesiredLRPHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	desiredLRP := serialization.DesiredLRPFromRequest(desireLRPRequest)
 
-	err = h.bbs.DesireLRP(desiredLRP)
+	err = h.bbs.DesireLRP(log, desiredLRP)
 	if err != nil {
 		if _, ok := err.(models.ValidationError); ok {
 			log.Error("lrp-request-invalid", err)
 			writeBadRequestResponse(w, receptor.InvalidLRP, err)
+			return
+		}
+
+		if err == bbserrors.ErrStoreResourceExists {
+			writeDesiredLRPAlreadyExistsResponse(w, desiredLRP.ProcessGuid)
 			return
 		}
 
@@ -75,11 +80,6 @@ func (h *DesiredLRPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		if err == bbserrors.ErrStoreResourceNotFound {
-			writeDesiredLRPNotFoundResponse(w, processGuid)
-			return
-		}
-
 		log.Error("unknown-error", err)
 		writeUnknownErrorResponse(w, err)
 		return
@@ -112,7 +112,7 @@ func (h *DesiredLRPHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	update := serialization.DesiredLRPUpdateFromRequest(desireLRPRequest)
 
-	err = h.bbs.UpdateDesiredLRP(processGuid, update)
+	err = h.bbs.UpdateDesiredLRP(log, processGuid, update)
 	if err == bbserrors.ErrStoreResourceNotFound {
 		writeDesiredLRPNotFoundResponse(w, processGuid)
 		return
@@ -140,7 +140,7 @@ func (h *DesiredLRPHandler) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := h.bbs.RemoveDesiredLRPByProcessGuid(processGuid)
+	err := h.bbs.RemoveDesiredLRPByProcessGuid(log, processGuid)
 	if err == bbserrors.ErrStoreResourceNotFound {
 		writeDesiredLRPNotFoundResponse(w, processGuid)
 		return
@@ -192,5 +192,12 @@ func writeDesiredLRPNotFoundResponse(w http.ResponseWriter, processGuid string) 
 	writeJSONResponse(w, http.StatusNotFound, receptor.Error{
 		Type:    receptor.DesiredLRPNotFound,
 		Message: fmt.Sprintf("Desired LRP with guid '%s' not found", processGuid),
+	})
+}
+
+func writeDesiredLRPAlreadyExistsResponse(w http.ResponseWriter, processGuid string) {
+	writeJSONResponse(w, http.StatusConflict, receptor.Error{
+		Type:    receptor.DesiredLRPAlreadyExists,
+		Message: fmt.Sprintf("Desired LRP with guid '%s' already exists", processGuid),
 	})
 }

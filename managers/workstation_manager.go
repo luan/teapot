@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	diego_models "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/luan/teapot/models"
 	"github.com/pivotal-golang/lager"
@@ -19,12 +20,14 @@ type WorkstationManager interface {
 type workstationManager struct {
 	receptorClient receptor.Client
 	logger         lager.Logger
+	appsDomain     string
 }
 
-func NewWorkstationManager(receptorClient receptor.Client, logger lager.Logger) WorkstationManager {
+func NewWorkstationManager(receptorClient receptor.Client, appsDomain string, logger lager.Logger) WorkstationManager {
 	return &workstationManager{
 		receptorClient: receptorClient,
 		logger:         logger,
+		appsDomain:     appsDomain,
 	}
 }
 
@@ -38,6 +41,21 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 	desiredLRP, err := m.receptorClient.GetDesiredLRP(workstation.Name)
 	if err == nil && desiredLRP.ProcessGuid == workstation.Name {
 		return models.ValidationError{models.ErrDuplicateField{"name"}}
+	}
+
+	route := "tiego-" + workstation.Name + "." + m.appsDomain
+	routingInfo := cfroutes.CFRoutes{
+		{Hostnames: []string{route}, Port: 3000},
+	}.RoutingInfo()
+
+	openRule := diego_models.SecurityGroupRule{
+		Protocol:     diego_models.AllProtocol,
+		Destinations: []string{"0.0.0.0/0"},
+	}
+	openRules := []diego_models.SecurityGroupRule{openRule}
+
+	if err != nil {
+		log.Debug("marshalling-route-json-failed", lager.Data{"error": err})
 	}
 
 	lrpRequest := receptor.DesiredLRPCreateRequest{
@@ -60,12 +78,14 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 		MemoryMB:   workstation.MemoryMB,
 		LogGuid:    workstation.Name,
 		LogSource:  "TEAPOT-WORKSTATION",
-		Ports:      []uint32{8080},
+		Ports:      []uint16{8080, 3000},
+		Routes:     routingInfo,
 		Action: &diego_models.RunAction{
 			Path:       "/tmp/tea",
 			LogSource:  "TEA",
 			Privileged: false,
 		},
+		EgressRules: openRules,
 	}
 
 	log.Debug("requesting-lrp", lager.Data{"lrp_request": lrpRequest})
