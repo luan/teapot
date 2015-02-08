@@ -11,17 +11,21 @@ import (
 
 	cf_debug_server "github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/natbeat"
+	"github.com/cloudfoundry-incubator/receptor/event"
 	"github.com/cloudfoundry-incubator/receptor/handlers"
 	"github.com/cloudfoundry-incubator/receptor/task_handler"
+	"github.com/cloudfoundry-incubator/receptor/watcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/diegonats"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
@@ -56,7 +60,7 @@ var taskHandlerAddress = flag.String(
 
 var heartbeatInterval = flag.Duration(
 	"heartbeatInterval",
-	60*time.Second,
+	lock_bbs.HEARTBEAT_INTERVAL,
 	"the interval between heartbeats for maintaining presence",
 )
 
@@ -102,17 +106,27 @@ var natsPassword = flag.String(
 	"Password for nats user.",
 )
 
+var communicationTimeout = flag.Duration(
+	"communicationTimeout",
+	10*time.Second,
+	"Timeout applied to all HTTP requests.",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "receptor"
+
+	bbsWatchRetryWaitDuration = 3 * time.Second
 )
 
 func main() {
+	cf_debug_server.AddFlags(flag.CommandLine)
+	cf_lager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
-	cf_debug_server.Run()
+	cf_http.Initialize(*communicationTimeout)
 
-	logger := cf_lager.New("receptor")
+	logger, reconfigurableSink := cf_lager.New("receptor")
 	logger.Info("starting")
 
 	initializeDropsonde(logger)
@@ -123,26 +137,42 @@ func main() {
 	}
 
 	bbs := initializeReceptorBBS(logger)
+	hub := event.NewHub()
 
-	handler := handlers.New(bbs, logger, *username, *password, *corsEnabled)
+	handler := handlers.New(bbs, hub, logger, *username, *password, *corsEnabled)
 
 	worker, enqueue := task_handler.NewTaskWorkerPool(bbs, logger)
 	taskHandler := task_handler.New(enqueue, logger)
+	lrpChangeWatcher := watcher.NewWatcher(
+		bbs,
+		hub,
+		clock.NewClock(),
+		bbsWatchRetryWaitDuration,
+		logger,
+	)
 
 	members := grouper.Members{
+		{"lrp-change-watcher", lrpChangeWatcher},
 		{"server", http_server.New(*serverAddress, handler)},
 		{"worker", worker},
-		{"task_complete_handler", http_server.New(*taskHandlerAddress, taskHandler)},
+		{"task-complete-handler", http_server.New(*taskHandlerAddress, taskHandler)},
 		{"heartbeater", initializeReceptorHeartbeat(*taskHandlerAddress, *heartbeatInterval, bbs, logger)},
+		{"hub-closer", closeHub(logger.Session("hub-closer"), hub)},
 	}
 
 	if *registerWithRouter {
 		registration := initializeServerRegistration(logger)
 		natsClient := diegonats.NewClient()
 		members = append(members, grouper.Member{
-			Name:   "background_heartbeat",
+			Name:   "background-heartbeat",
 			Runner: natbeat.NewBackgroundHeartbeat(natsClient, *natsAddresses, *natsUsername, *natsPassword, logger, registration),
 		})
+	}
+
+	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+		members = append(grouper.Members{
+			{"debug-server", cf_debug_server.Runner(dbgAddr, reconfigurableSink)},
+		}, members...)
 	}
 
 	group := grouper.NewOrdered(os.Interrupt, members)
@@ -158,7 +188,6 @@ func main() {
 	}
 
 	logger.Info("exited")
-	os.Exit(0) // FIXME: why am I needed?
 }
 
 func validateNatsArguments() error {
@@ -168,6 +197,22 @@ func validateNatsArguments() error {
 		}
 	}
 	return nil
+}
+
+func closeHub(logger lager.Logger, hub event.Hub) ifrit.Runner {
+	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+		logger.Info("starting")
+		defer logger.Info("finished")
+
+		close(ready)
+		logger.Info("started")
+
+		<-signals
+		logger.Info("shutting-down")
+		hub.Close()
+
+		return nil
+	})
 }
 
 func initializeDropsonde(logger lager.Logger) {
@@ -188,7 +233,7 @@ func initializeReceptorBBS(logger lager.Logger) Bbs.ReceptorBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewReceptorBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	return Bbs.NewReceptorBBS(etcdAdapter, clock.NewClock(), logger)
 }
 
 func initializeServerRegistration(logger lager.Logger) (registration natbeat.RegistryMessage) {

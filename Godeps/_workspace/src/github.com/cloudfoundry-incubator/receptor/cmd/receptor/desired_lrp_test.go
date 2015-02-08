@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 
@@ -43,9 +44,12 @@ var _ = Describe("Desired LRP API", func() {
 			Ω(desiredLRPs[0].ProcessGuid).To(Equal(lrpToCreate.ProcessGuid))
 		})
 
-		It("is idempotent", func() {
-			err := client.CreateDesiredLRP(lrpToCreate)
-			Ω(err).ShouldNot(HaveOccurred())
+		Context("when the desired LRP already exists", func() {
+			It("fails the request with an appropriate error", func() {
+				err := client.CreateDesiredLRP(lrpToCreate)
+				Ω(err).Should(BeAssignableToTypeOf(receptor.Error{}))
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPAlreadyExists))
+			})
 		})
 	})
 
@@ -79,7 +83,11 @@ var _ = Describe("Desired LRP API", func() {
 
 		instances := 6
 		annotation := "update-annotation"
-		routes := []string{"updated-route"}
+		rawMessage := json.RawMessage([]byte(`[{"port":8080,"hostnames":["updated-route"]}]`))
+
+		routingInfo := receptor.RoutingInfo{
+			"cf-router": &rawMessage,
+		}
 
 		BeforeEach(func() {
 			createLRPReq := newValidDesiredLRPCreateRequest()
@@ -89,7 +97,7 @@ var _ = Describe("Desired LRP API", func() {
 			update := receptor.DesiredLRPUpdateRequest{
 				Instances:  &instances,
 				Annotation: &annotation,
-				Routes:     routes,
+				Routes:     routingInfo,
 			}
 
 			updateErr = client.UpdateDesiredLRP(createLRPReq.ProcessGuid, update)
@@ -104,8 +112,8 @@ var _ = Describe("Desired LRP API", func() {
 			desiredLRPs, err := bbs.DesiredLRPs()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(desiredLRPs[0].Instances).To(Equal(instances))
-			Ω(desiredLRPs[0].Routes).To(Equal(routes))
 			Ω(desiredLRPs[0].Annotation).To(Equal(annotation))
+			Ω(desiredLRPs[0].Routes).To(Equal(map[string]*json.RawMessage(routingInfo)))
 		})
 	})
 
@@ -196,7 +204,7 @@ func newValidDesiredLRPCreateRequest() receptor.DesiredLRPCreateRequest {
 		Domain:      "test-domain",
 		Stack:       "some-stack",
 		Instances:   1,
-		Ports:       []uint32{1234, 5678},
+		Ports:       []uint16{1234, 5678},
 		Action: &models.RunAction{
 			Path: "/bin/bash",
 		},

@@ -33,7 +33,8 @@ var _ = Describe("WorkstationHandler", func() {
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		responseRecorder = httptest.NewRecorder()
 		fakeReceptorClient = new(fake_receptor.FakeClient)
-		manager = managers.NewWorkstationManager(fakeReceptorClient, logger)
+		appsDomain := "tiego.com"
+		manager = managers.NewWorkstationManager(fakeReceptorClient, appsDomain, logger)
 		handler = NewWorkstationHandler(manager, logger)
 	})
 

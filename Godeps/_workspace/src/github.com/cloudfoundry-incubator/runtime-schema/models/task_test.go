@@ -19,7 +19,7 @@ var _ = Describe("Task", func() {
 		taskPayload = `{
 		"task_guid":"some-guid",
 		"domain":"some-domain",
-		"root_fs": "docker:///docker.com/docker",
+		"rootfs": "docker:///docker.com/docker",
 		"stack":"some-stack",
 		"env":[
 			{
@@ -42,13 +42,32 @@ var _ = Describe("Task", func() {
 		"memory_mb":256,
 		"disk_mb":1024,
 		"cpu_weight": 42,
+		"privileged": true,
 		"log_guid": "123",
 		"log_source": "APP",
+		"metrics_guid": "456",
 		"created_at": 1393371971000000000,
 		"updated_at": 1393371971000000010,
 		"first_completed_at": 1393371971000000030,
 		"state": 1,
-		"annotation": "[{\"anything\": \"you want!\"}]... dude"
+		"annotation": "[{\"anything\": \"you want!\"}]... dude",
+		"egress_rules": [
+		  {
+				"protocol": "tcp",
+				"destinations": ["0.0.0.0/0"],
+				"port_range": {
+					"start": 1,
+					"end": 1024
+				},
+				"log": true
+			},
+		  {
+				"protocol": "udp",
+				"destinations": ["8.8.0.0/16"],
+				"ports": [53],
+				"log": false
+			}
+		]
 	}`
 
 		task = Task{
@@ -70,8 +89,10 @@ var _ = Describe("Task", func() {
 			MemoryMB:         256,
 			DiskMB:           1024,
 			CPUWeight:        42,
-			LogSource:        "APP",
+			Privileged:       true,
 			LogGuid:          "123",
+			LogSource:        "APP",
+			MetricsGuid:      "456",
 			CreatedAt:        time.Date(2014, time.February, 25, 23, 46, 11, 00, time.UTC).UnixNano(),
 			UpdatedAt:        time.Date(2014, time.February, 25, 23, 46, 11, 10, time.UTC).UnixNano(),
 			FirstCompletedAt: time.Date(2014, time.February, 25, 23, 46, 11, 30, time.UTC).UnixNano(),
@@ -82,6 +103,23 @@ var _ = Describe("Task", func() {
 			Result:        "turboencabulated",
 			Failed:        true,
 			FailureReason: "because i said so",
+
+			EgressRules: []SecurityGroupRule{
+				{
+					Protocol:     "tcp",
+					Destinations: []string{"0.0.0.0/0"},
+					PortRange: &PortRange{
+						Start: 1,
+						End:   1024,
+					},
+					Log: true,
+				},
+				{
+					Protocol:     "udp",
+					Destinations: []string{"8.8.0.0/16"},
+					Ports:        []uint16{53},
+				},
+			},
 
 			Annotation: `[{"anything": "you want!"}]... dude`,
 		}
@@ -122,7 +160,8 @@ var _ = Describe("Task", func() {
 		})
 
 		for _, testCase := range []ValidatorErrorCase{
-			{"task_guid",
+			{
+				"task_guid",
 				Task{
 					Domain: "some-domain",
 					Stack:  "some-stack",
@@ -189,6 +228,20 @@ var _ = Describe("Task", func() {
 						Path: "ls",
 					},
 					CPUWeight: 101,
+				},
+			},
+			{
+				"egress_rules",
+				Task{
+					Domain:   "some-domain",
+					TaskGuid: "task-guid",
+					Stack:    "some-stack",
+					Action: &RunAction{
+						Path: "ls",
+					},
+					EgressRules: []SecurityGroupRule{
+						{Protocol: "invalid"},
+					},
 				},
 			},
 		} {

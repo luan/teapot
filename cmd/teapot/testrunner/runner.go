@@ -11,6 +11,7 @@ type Args struct {
 	ReceptorAddress string
 	Username        string
 	Password        string
+	AppsDomain      string
 }
 
 func (args Args) ArgSlice() []string {
@@ -19,6 +20,7 @@ func (args Args) ArgSlice() []string {
 		"-receptorAddress", args.ReceptorAddress,
 		"-username", args.Username,
 		"-password", args.Password,
+		"-appsDomain", args.AppsDomain,
 	}
 }
 

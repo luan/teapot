@@ -3,14 +3,25 @@ package receptor
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/tedsuo/rata"
+	"github.com/vito/go-sse/sse"
 )
+
+var ErrReadFromClosedSource = errors.New("read from closed source")
+var ErrSendToClosedSource = errors.New("send to closed source")
+var ErrSourceAlreadyClosed = errors.New("source already closed")
+var ErrSlowConsumer = errors.New("slow consumer")
+
+var ErrSubscribedToClosedHub = errors.New("subscribed to closed hub")
+var ErrHubAlreadyClosed = errors.New("hub already closed")
 
 //go:generate counterfeiter -o fake_receptor/fake_client.go . Client
 
@@ -35,6 +46,8 @@ type Client interface {
 	ActualLRPByProcessGuidAndIndex(processGuid string, index int) (ActualLRPResponse, error)
 	KillActualLRPByProcessGuidAndIndex(processGuid string, index int) error
 
+	SubscribeToEvents() (EventSource, error)
+
 	Cells() ([]CellResponse, error)
 
 	UpsertDomain(domain string, ttl time.Duration) error
@@ -43,14 +56,18 @@ type Client interface {
 
 func NewClient(url string) Client {
 	return &client{
-		httpClient: &http.Client{},
-		reqGen:     rata.NewRequestGenerator(url, Routes),
+		httpClient:          cf_http.NewClient(),
+		streamingHTTPClient: cf_http.NewStreamingClient(),
+
+		reqGen: rata.NewRequestGenerator(url, Routes),
 	}
 }
 
 type client struct {
-	httpClient *http.Client
-	reqGen     *rata.RequestGenerator
+	httpClient          *http.Client
+	streamingHTTPClient *http.Client
+
+	reqGen *rata.RequestGenerator
 }
 
 func (c *client) CreateTask(request TaskCreateRequest) error {
@@ -140,6 +157,22 @@ func (c *client) ActualLRPByProcessGuidAndIndex(processGuid string, index int) (
 func (c *client) KillActualLRPByProcessGuidAndIndex(processGuid string, index int) error {
 	err := c.doRequest(KillActualLRPByProcessGuidAndIndexRoute, rata.Params{"process_guid": processGuid, "index": strconv.Itoa(index)}, nil, nil, nil)
 	return err
+}
+
+func (c *client) SubscribeToEvents() (EventSource, error) {
+	eventSource, err := sse.Connect(c.streamingHTTPClient, time.Second, func() *http.Request {
+		request, err := c.reqGen.CreateRequest(EventStream, nil, nil)
+		if err != nil {
+			panic(err) // totally shouldn't happen
+		}
+
+		return request
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewEventSource(eventSource), nil
 }
 
 func (c *client) Cells() ([]CellResponse, error) {

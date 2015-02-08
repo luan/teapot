@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
@@ -40,6 +42,15 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 		fmt.Println("Either set TEAPOT_USERNAME and TEAPOT_PASSWORD or, to disable authentication, TEAPOT_DEVMODE=true")
 		os.Exit(1)
 	}
+
+	bytes, _ := json.Marshal(cfroutes.CFRoutes{
+		{Hostnames: []string{route}, Port: 8080},
+	})
+
+	routeRawJson := json.RawMessage(bytes)
+	routingInfo := receptor.RoutingInfo{}
+	routingInfo[cfroutes.CF_ROUTER] = &routeRawJson
+
 	err := client.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 		ProcessGuid: "teapot",
 		Domain:      "teapot",
@@ -63,6 +74,7 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 				"-receptorAddress", receptorAddr,
 				"-username", username,
 				"-password", password,
+				"-appsDomain", "ketchup.cf-apps.com",
 			},
 			LogSource: "TEAPOT",
 		},
@@ -73,8 +85,8 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 		},
 		DiskMB:    128,
 		MemoryMB:  64,
-		Ports:     []uint32{8080},
-		Routes:    []string{route},
+		Ports:     []uint16{8080},
+		Routes:    routingInfo,
 		LogGuid:   "teapot",
 		LogSource: "TEAPOT",
 	})

@@ -15,19 +15,27 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-lager",
-			"Rev": "94308c799cf61ac0818667ddcc25046c8c5659d1"
+			"Rev": "3324790250247b4d3bd3abc3e74654a537d79a30"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/cf_http",
+			"Rev": "bcec9f0c06dc0f60dfe259061c329a69dedfe128"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/receptor",
-			"Rev": "93c689bf8d0aa847e61c48ed4f5a5f7e53040640"
+			"Rev": "5da391b229ceffddda22c884615fafb157944ad9"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/cfroutes",
+			"Rev": "e20b03d3a2c61589985cceced24b0753da5e88e6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "de26448f4481ae77a0bedaa04d1716585a78bc9b"
+			"Rev": "a1f8505faae18bf93bb022f2daa14b6acb8373f1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/dropsonde",
-			"Rev": "b547d548b025b96831e49480466d090901ef09a4"
+			"Rev": "d0faee0a050f8cf64a4d383f0632afc6ed964971"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -36,11 +44,11 @@
 		},
 		{
 			"ImportPath": "github.com/goji/httpauth",
-			"Rev": "ad1638674d78c00d2d2b01af7d8ed8e2a3bab582"
+			"Rev": "74459b2b27aa334fc9427c1604ee304c6da57661"
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "1f87405cd9755fc388e111c4003caca4a2f52fa6"
+			"Rev": "ab5b3a61f5b6aa323d66ece457334396c4ccdd03"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -48,8 +56,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0-32-g291f28e",
-			"Rev": "291f28e66dd277f35d3635990a7448759645c7e7"
+			"Comment": "v1.1.0-33-g17ea479",
+			"Rev": "17ea479729ee427265ac1e913443018350946ddf"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -58,7 +66,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "ce9effb2d1062e2d81333f942df0549706901b1b"
+			"Rev": "389345f09521afe9c164379d98cb70335aff8726"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
@@ -66,7 +74,11 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",
-			"Rev": "6197c97c67a03bfd4d6977a3b6060d6c6b3d581f"
+			"Rev": "b15ebd8bd97ae9202eb00c076d59b2f2824bce37"
+		},
+		{
+			"ImportPath": "github.com/vito/go-sse/sse",
+			"Rev": "bfb56c5590376a59535cd0edb3f5aa3447dbbe65"
 		}
 	]
 }

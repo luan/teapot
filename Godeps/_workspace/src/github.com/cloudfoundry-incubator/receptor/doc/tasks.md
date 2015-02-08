@@ -13,7 +13,7 @@ When submitting a Task you `POST` a valid `TaskCreateRequest`.  The [API referen
 
     "stack": "lucid64",
 
-    "root_fs": "docker:///docker-org/docker-image",
+    "rootfs": "docker:///docker-org/docker-image",
     "env": [
         {"name": "ENV_NAME_A", "value": "ENV_VALUE_A"},
         {"name": "ENV_NAME_B", "value": "ENV_VALUE_B"}
@@ -22,6 +22,7 @@ When submitting a Task you `POST` a valid `TaskCreateRequest`.  The [API referen
     "cpu_weight": 57,
     "disk_mb": 1024,
     "memory_mb": 128,
+    "privileged": true,
 
     "action":  ACTION (see below),
 
@@ -31,7 +32,18 @@ When submitting a Task you `POST` a valid `TaskCreateRequest`.  The [API referen
     "log_guid": "some-log-guid",
     "log_source": "some-log-source",
 
-    "annotation": "arbitrary metadata"
+    "annotation": "arbitrary metadata",
+
+    "egress_rules": [
+        {
+            "protocol": "tcp",
+            "destinations": ["0.0.0.0/0"],
+            "port_range": {
+                "start": 1,
+                "end": 1024
+            }
+       }
+   ]
 }
 ```
 
@@ -65,21 +77,25 @@ Diego can support different target platforms (linux, windows, etc.). `stack` all
 
 #### Container Contents and Environment
 
-#### `root_fs` [optional]
+#### `rootfs` [optional]
 
 By default, when provisioning a container, Diego will mount a pre-configured root filesystem.  Currently, the default filesystem provided by [diego-release](https://github.com/cloudfoundry-incubator/diego-release) is based on lucid64 and is geared towards supporting the Cloud Foundry buildpacks.
 
-It is possible, however, to provide a custom root filesystem by specifying a Dockerimage for `root_fs`:
+It is possible, however, to provide a custom root filesystem by specifying a Docker image for `rootfs`:
 
 ```
-"root_fs": "docker:///docker-org/docker-image#docker-tag"
+"rootfs": "docker:///docker-org/docker-image#docker-tag"
 ```
 
-Currently, only the public docker hub is supported.
+To pull the image from a different registry than the default (Docker Hub), specify it as the host in the URI string, e.g.:
 
-> You *must* specify the dockerimage `root_fs` uri as specified, including the leading `docker:///`!
+```
+"rootfs": "docker://index.myregistry.gov/docker-org/docker-image#docker-tag"
+```
 
-> [Diego-Edge](http://github.com/cloudfoundry-incubator/diego-lite) does not ship with a default rootfs.  You must specify a docker-image when using Diego-Edge.  You can mount the filesystem provided by diego-release by specifying `"root_fs": "docker:///cloudfoundry/lucid64"` or `"root_fs": "docker:///cloudfoundry/trusty64"`.
+> You *must* specify the dockerimage `rootfs` uri as specified, including the leading `docker://`!
+
+> [Lattice](https://github.com/pivotal-cf-experimental/lattice) does not ship with a default rootfs. You must specify a docker-image when using Lattice. You can mount the filesystem provided by diego-release by specifying `"rootfs": "docker:///cloudfoundry/lucid64"` or `"rootfs": "docker:///cloudfoundry/trusty64"`.
 
 #### `env` [optional]
 
@@ -91,24 +107,30 @@ For more details on the environment variables provided to processes in the conta
 
 #### `cpu_weight` [optional]
 
-To control the CPU shares provided to a container, set `cpu_weight`.  This must be a positive number in the range `1-100`.  The `cpu_weight` enforces a relative fair share of the CPU among containers.  It's best explained with examples.  Consider the following scenarios (we shall assume that each container is running a busy process that is attempting to consumer as many CPU resources as possible):
+To control the CPU shares provided to a container, set `cpu_weight`.  This must be a positive number in the range `1-100`.  The `cpu_weight` enforces a relative fair share of the CPU among containers.  It's best explained with examples.  Consider the following scenarios (we shall assume that each container is running a busy process that is attempting to consume as many CPU resources as possible):
 
 - Two containers, with equal values of `cpu_weight`: both containers will receive equal shares of CPU time.
-- Two containers, one with `cpu_weight=50` the other with `cpu_weight=100`: the latter will get (roughly) 2/3 of the CPU time, the former 1/3.
+- Two containers, one with `cpu_weight=50` the other with `cpu_weight=100`: the later will get (roughly) 2/3 of the CPU time, the former 1/3.
 
 #### `disk_mb` [optional]
 
 A disk quota applied to the entire container.  Any data written on top of the RootFS counts against the Disk Quota.  Processes that attempt to exceed this limit will not be allowed to write to disk.
 
-- `disk_mb` must be an integer > 0
+- `disk_mb` must be an integer >= 0
+- If set to 0 no disk constraints are applied to the container
 - The units are megabytes
 
 #### `memory_mb` [optional]
 
 A memory limit applied to the entire container.  If the aggregate memory consumption by all processs running in the container exceeds this value, the container will be destroyed.
 
-- `memory_mb` must be an integer > 0
+- `memory_mb` must be an integer >= 0
+- If set to 0 no memory constraints are applied to the container
 - The units are megabytes
+
+#### `privileged` [optional]
+
+If false, Diego will create a container that is in a user namespace.  Processes that succesfully obtain escalated privileges (i.e. root access) will actually only be root within the user namespace and will not be able to maliciously modify the host VM.  If true, Diego creates a container with no user namespace -- escalating to root gives the user *real* root access.
 
 #### Actions
 
@@ -134,14 +156,99 @@ Consumers of Diego have two options to learn that a Task has `COMPLETED`: they c
 
 If a `completion_callback_url` is provided Diego will `POST` to the provided URL as soon as the Task completes.  The body of the `POST` will include the `TaskResponse` (see [below](#retreiving-tasks)).
 
-- Any response from the callback (be it success or failure) will resolve the Task (removing it from Diego).  
+- Any response from the callback (be it success or failure) will resolve the Task (removing it from Diego).
 - However, if the callback responds with `503` or `504` Diego will immediately retry the callback up to 3 times.  If the `503/504` status persists Diego will try again after a period of time (typically within ~30 seconds).
 - If the callback times out or a connection cannot be established, Diego will try again after a period of time (typically within ~30 seconds).
 - Diego will eventually (after ~2 minutes) give up on the Task if the callback does not respond succesfully.
 
+#### Networking
+By default network access for any container is limited but some tasks might need specific network access and that can be setup using `egress_rules` field.
+
+Rules are evaluated in reverse order of their position, i.e., the last one takes precedence.
+
+#### `egress_rules` [optional]
+`egress_rules` are a list of egress firewall rules that are applied to a container running in Diego
+
+##### `protocol` [required]
+The protocol of the rule that can be one of the following `tcp`, `udp`,`icmp`, `all`.
+
+##### `destinations` [required]
+The destinations of the rule that is a list of either an IP Address (1.2.3.4) or an IP range (1.2.3.4-2.3.4.5) or a CIDR (1.2.3.4/5)
+
+##### `ports` [optional]
+A list of destination ports that are integers between 1 and 65535.
+> `ports` or `port_range` must be provided for `tcp` and `udp`.
+> It is an error when both are provided.
+
+##### `port_range` [optional]
+- `start` [required] the start of the range as an integer between 1 and 65535
+- `end` [required] the end of the range as an integer between 1 and 65535
+
+> `ports` or `port_range` must be provided for protocol `tcp` and `udp`.
+> It is an error when both are provided.
+
+##### `icmp_info` [optional]
+- `type` [required] will be an integer between 0 and 255
+- `code` [required] will be an integer
+
+> `icmp_info` is required for protocol `icmp`.
+> It is an error when provided for other protocols.
+
+##### `log` [optional]
+Enable logging of the rule
+> `log` is optional for `tcp` and `all`.
+> It is an error to provide `log` as true when protocol is `udp` or `icmp`.
+
+> Define all rules with `log` enabled at the end of your `egress_rules` to guarantee logging.
+
+##### Examples
+***
+`ALL`
+```
+{
+    "protocol": "all",
+    "destinations": ["1.2.3.4"],
+    "log": true
+}
+```
+***
+`TCP`
+```
+{
+    "protocol": "tcp",
+    "destinations": ["1.2.3.4-2.3.4.5"],
+    "ports": [80, 443],
+    "log": true
+}
+```
+***
+`UDP`
+```
+{
+    "protocol": "udp",
+    "destinations": ["1.2.3.4/4"],
+    "port_range": {
+        "start": 8000,
+        "end": 8085
+    }
+}
+```
+***
+`ICMP`
+```
+{
+    "protocol": "icmp",
+    "destinations": ["1.2.3.4", "2.3.4.5/6"],
+    "icmp_info": {
+        "type": 1,
+        "code": 40
+    }
+}
+```
+***
 #### Logging
 
-Diego uses [doppler](https://github.com/cloudfoundry-incubator/doppler) to emit logs generated by container processes to the user.
+Diego uses [doppler](https://github.com/cloudfoundry/loggregator) to emit logs generated by container processes to the user.
 
 #### `log_guid` [optional]
 
@@ -166,7 +273,7 @@ To learn that a Task is completed you must either register a `completion_callbac
     ... all TaskCreateRequest fields...
 
     "state": "RUNNING",
-    
+
     "cell_id": "cell-identifier",
 
     "failed": true/false,
@@ -208,7 +315,7 @@ Tasks in Diego undergo a simple lifecycle encoded in the Tasks's state:
 - When the Cell begins to create the container and run the Task action, the Task enters the `RUNNING` state.
 - When the Task completes, the Cell annotates the `TaskResponse` with `failed`, `failure_reason`, and `result`, and puts the Task in the `COMPLETED` state.
 
-At this point it is up to the consumer of Diego to acknowledge and resolve the completed Task.  This can either be done via a completion callback (described [above](#completion_callback_url)) or by [deleting](delete_tasks.md) the Task.  When the Task is being resolved it first enters the `RESOLVING` state and is ultimately removed from Diego.
+At this point it is up to the consumer of Diego to acknowledge and resolve the completed Task.  This can either be done via a completion callback (described [above](#completion_callback_url-optional)) or by [deleting](delete_tasks.md) the Task.  When the Task is being resolved it first enters the `RESOLVING` state and is ultimately removed from Diego.
 
 Diego will automatically reap Tasks that remain unresolved after 2 minutes.
 

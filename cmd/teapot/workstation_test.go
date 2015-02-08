@@ -1,12 +1,14 @@
 package main_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/gorilla/websocket"
 	"github.com/luan/teapot"
@@ -33,6 +35,19 @@ var _ = Describe("Workstation API", func() {
 
 		BeforeEach(func() {
 			workstationToCreate = newValidWorkstationCreateRequest()
+
+			bytes, _ := json.Marshal(cfroutes.CFRoutes{
+				{Hostnames: []string{"tiego-my-workstation.tiego.com"}, Port: 3000},
+			})
+			routeJson := json.RawMessage(bytes)
+			routingInfo := receptor.RoutingInfo{}
+			routingInfo[cfroutes.CF_ROUTER] = &routeJson
+
+			openRule := models.SecurityGroupRule{
+				Protocol:     models.AllProtocol,
+				Destinations: []string{"0.0.0.0/0"},
+			}
+			openRules := []models.SecurityGroupRule{openRule}
 
 			createDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.CreateDesiredLRPRoute)
 			getDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.GetDesiredLRPRoute)
@@ -64,12 +79,14 @@ var _ = Describe("Workstation API", func() {
 						MemoryMB:   512,
 						LogGuid:    "my-workstation",
 						LogSource:  "TEAPOT-WORKSTATION",
-						Ports:      []uint32{8080},
+						Ports:      []uint16{8080, 3000},
+						Routes:     routingInfo,
 						Action: &models.RunAction{
 							Path:       "/tmp/tea",
 							LogSource:  "TEA",
 							Privileged: false,
 						},
+						EgressRules: openRules,
 					}),
 				),
 			)
@@ -166,7 +183,7 @@ var _ = Describe("Workstation API", func() {
 					ghttp.RespondWithJSONEncoded(http.StatusOK, []receptor.ActualLRPResponse{
 						{
 							Address: teaHost,
-							Ports:   []receptor.PortMapping{{HostPort: uint32(teaPort)}},
+							Ports:   []receptor.PortMapping{{HostPort: uint16(teaPort)}},
 						},
 					}),
 				),

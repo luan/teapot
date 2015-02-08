@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 
+	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/receptor/serialization"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -38,7 +40,7 @@ func newTaskWorker(taskQueue <-chan models.Task, bbs Bbs.ReceptorBBS, logger lag
 		taskQueue:  taskQueue,
 		bbs:        bbs,
 		logger:     logger,
-		httpClient: http.Client{},
+		httpClient: cf_http.NewClient(),
 	}
 }
 
@@ -46,7 +48,7 @@ type taskWorker struct {
 	taskQueue  <-chan models.Task
 	bbs        Bbs.ReceptorBBS
 	logger     lager.Logger
-	httpClient http.Client
+	httpClient *http.Client
 }
 
 func (t *taskWorker) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -68,7 +70,7 @@ func (t *taskWorker) handleCompletedTask(task models.Task) {
 
 	if task.CompletionCallbackURL != nil {
 		logger.Info("resolving-task")
-		err := t.bbs.ResolvingTask(task.TaskGuid)
+		err := t.bbs.ResolvingTask(logger, task.TaskGuid)
 		if err != nil {
 			logger.Error("marking-task-as-resolving-failed", err)
 			return
@@ -95,13 +97,17 @@ func (t *taskWorker) handleCompletedTask(task models.Task) {
 
 			response, err := t.httpClient.Do(request)
 			if err != nil {
+				matched, _ := regexp.MatchString("use of closed network connection", err.Error())
+				if matched {
+					continue
+				}
 				logger.Error("doing-request-failed", err)
 				return
 			}
 
 			statusCode = response.StatusCode
 			if shouldResolve(statusCode) {
-				err = t.bbs.ResolveTask(task.TaskGuid)
+				err = t.bbs.ResolveTask(logger, task.TaskGuid)
 				if err != nil {
 					logger.Error("resolving-task-failed", err)
 					return
