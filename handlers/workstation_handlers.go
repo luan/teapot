@@ -112,7 +112,15 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 		writeWorkstationNotFoundResponse(w, name)
 		return
 	}
-	attachURL := fmt.Sprintf("ws://%s:%d/shell", actualLRPs[0].Address, actualLRPs[0].Ports[0].HostPort)
+
+	workstation := actualLRPs[0]
+	if workstation.State != receptor.ActualLRPStateRunning {
+		log.Info("attach-failed", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
+		writeInvalidWorkstationResponse(w, workstation)
+		return
+	}
+
+	attachURL := fmt.Sprintf("ws://%s:%d/shell", workstation.Address, workstation.Ports[0].HostPort)
 	log.Debug("attaching-to", lager.Data{"attach_url": attachURL, "actual_lrps": actualLRPs})
 
 	u, _ := url.Parse(attachURL)
@@ -173,5 +181,12 @@ func writeWorkstationNotFoundResponse(w http.ResponseWriter, name string) {
 	writeJSONResponse(w, http.StatusNotFound, receptor.Error{
 		Type:    teapot.WorkstationNotFound,
 		Message: fmt.Sprintf("Workstation with name '%s' not found", name),
+	})
+}
+
+func writeInvalidWorkstationResponse(w http.ResponseWriter, workstation receptor.ActualLRPResponse) {
+	writeJSONResponse(w, http.StatusBadRequest, receptor.Error{
+		Type:    teapot.InvalidWorkstation,
+		Message: fmt.Sprintf("Workstation %s is not RUNNING.", workstation.ProcessGuid),
 	})
 }

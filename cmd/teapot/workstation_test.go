@@ -180,6 +180,7 @@ var _ = Describe("Workstation API", func() {
 						{
 							Address: teaHost,
 							Ports:   []receptor.PortMapping{{HostPort: uint16(teaPort)}},
+							State:   receptor.ActualLRPStateRunning,
 						},
 					}),
 				),

@@ -228,6 +228,33 @@ var _ = Describe("WorkstationHandler", func() {
 			})
 		})
 
+		Context("when the workstation is not RUNNING", func() {
+			BeforeEach(func() {
+				actualLRPResponse := receptor.ActualLRPResponse{
+					ProcessGuid: "my-workstation",
+					State:       receptor.ActualLRPStateClaimed,
+				}
+				response := []receptor.ActualLRPResponse{actualLRPResponse}
+				fakeReceptorClient.ActualLRPsByProcessGuidReturns(response, nil)
+				handler.Attach(responseRecorder, req)
+			})
+
+			It("fails with a 400 Bad Request", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusBadRequest))
+			})
+
+			It("returns an InvalidWorkstation error", func() {
+				var responseError receptor.Error
+				err := json.Unmarshal(responseRecorder.Body.Bytes(), &responseError)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(responseError).To(Equal(receptor.Error{
+					Type:    teapot.InvalidWorkstation,
+					Message: "Workstation my-workstation is not RUNNING.",
+				}))
+			})
+		})
+
 		Context("when the receptor returns an error", func() {
 			BeforeEach(func() {
 				fakeReceptorClient.ActualLRPsByProcessGuidReturns(nil, errors.New("receptor error"))
