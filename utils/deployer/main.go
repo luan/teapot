@@ -33,10 +33,14 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 	route := fmt.Sprintf("teapot.%s", routeRoot)
 	username := os.Getenv("TEAPOT_USERNAME")
 	password := os.Getenv("TEAPOT_PASSWORD")
+	teaSecret := os.Getenv("TEAPOT_TEA_SECRET")
 	devMode := os.Getenv("TEAPOT_DEVMODE")
-	if devMode != "true" && (len(username) == 0 || len(password) == 0) {
-		fmt.Println("Either set TEAPOT_USERNAME and TEAPOT_PASSWORD or, to disable authentication, TEAPOT_DEVMODE=true")
+	if devMode != "true" && (len(username) == 0 || len(password) == 0 || len(teaSecret) == 0) {
+		fmt.Println("Either set TEAPOT_USERNAME and TEAPOT_PASSWORD and TEAPOT_TEA_SECRET or, to disable authentication, TEAPOT_DEVMODE=true")
 		os.Exit(1)
+	}
+	if len(teaSecret) == 0 {
+		teaSecret = "p"
 	}
 
 	bytes, _ := json.Marshal(cfroutes.CFRoutes{
@@ -67,6 +71,7 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 				"-username", username,
 				"-password", password,
 				"-appsDomain", routeRoot,
+				"-teaSecret", teaSecret,
 			},
 			LogSource: "TEAPOT",
 		},
