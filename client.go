@@ -20,6 +20,7 @@ type Client interface {
 	DeleteWorkstation(name string) error
 	AttachWorkstation(name string) (*websocket.Conn, error)
 	ListWorkstations() ([]WorkstationResponse, error)
+	AddKeyToWorkstation(name, key string) error
 }
 
 type client struct {
@@ -35,11 +36,15 @@ func NewClient(url string) Client {
 }
 
 func (c *client) CreateWorkstation(request WorkstationCreateRequest) error {
-	return c.doRequest(CreateWorkstationRoute, nil, nil, request, nil)
+	return c.doRequest(CreateWorkstationRoute, nil, nil, request, nil, nil)
 }
 
 func (c *client) DeleteWorkstation(name string) error {
-	return c.doRequest(DeleteWorkstationRoute, rata.Params{"name": name}, nil, nil, nil)
+	return c.doRequest(DeleteWorkstationRoute, rata.Params{"name": name}, nil, nil, nil, nil)
+}
+
+func (c *client) AddKeyToWorkstation(name, key string) error {
+	return c.doRequest(AddKeyToWorkstationRoute, rata.Params{"name": name}, nil, nil, nil, []byte(key))
 }
 
 func (c *client) AttachWorkstation(name string) (*websocket.Conn, error) {
@@ -48,23 +53,26 @@ func (c *client) AttachWorkstation(name string) (*websocket.Conn, error) {
 
 func (c *client) ListWorkstations() ([]WorkstationResponse, error) {
 	var workstations []WorkstationResponse
-	err := c.doRequest(ListWorkstationsRoute, rata.Params{}, nil, nil, &workstations)
+	err := c.doRequest(ListWorkstationsRoute, rata.Params{}, nil, nil, &workstations, nil)
 	return workstations, err
 }
 
-func (c *client) doRequest(requestName string, params rata.Params, queryParams url.Values, request, response interface{}) error {
-	requestJson, err := json.Marshal(request)
-	if err != nil {
-		return err
+func (c *client) doRequest(requestName string, params rata.Params, queryParams url.Values, request, response interface{}, rawBody []byte) error {
+	if rawBody == nil {
+		var err error
+		rawBody, err = json.Marshal(request)
+		if err != nil {
+			return err
+		}
 	}
 
-	req, err := c.reqGen.CreateRequest(requestName, params, bytes.NewReader(requestJson))
+	req, err := c.reqGen.CreateRequest(requestName, params, bytes.NewReader(rawBody))
 	if err != nil {
 		return err
 	}
 
 	req.URL.RawQuery = queryParams.Encode()
-	req.ContentLength = int64(len(requestJson))
+	req.ContentLength = int64(len(rawBody))
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {

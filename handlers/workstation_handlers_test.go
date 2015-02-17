@@ -3,9 +3,9 @@ package handlers_test
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/receptor/fake_receptor"
@@ -13,10 +13,12 @@ import (
 	. "github.com/luan/teapot/handlers"
 	"github.com/luan/teapot/managers"
 	"github.com/luan/teapot/models"
+	model_fakes "github.com/luan/teapot/models/fakes"
 	"github.com/pivotal-golang/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("WorkstationHandler", func() {
@@ -26,6 +28,7 @@ var _ = Describe("WorkstationHandler", func() {
 		handler            *WorkstationHandler
 		fakeReceptorClient *fake_receptor.FakeClient
 		manager            managers.WorkstationManager
+		fakeRouteProvider  *model_fakes.FakeRouteProvider
 	)
 
 	BeforeEach(func() {
@@ -33,9 +36,9 @@ var _ = Describe("WorkstationHandler", func() {
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		responseRecorder = httptest.NewRecorder()
 		fakeReceptorClient = new(fake_receptor.FakeClient)
-		appsDomain := "tiego.com"
 		teaSecret := "something"
-		manager = managers.NewWorkstationManager(fakeReceptorClient, appsDomain, teaSecret, logger)
+		fakeRouteProvider = &model_fakes.FakeRouteProvider{}
+		manager = managers.NewWorkstationManager(fakeReceptorClient, fakeRouteProvider, teaSecret, logger)
 		handler = NewWorkstationHandler(manager, logger)
 	})
 
@@ -160,7 +163,7 @@ var _ = Describe("WorkstationHandler", func() {
 
 		BeforeEach(func() {
 			req = newTestRequest("")
-			req.Form = url.Values{":name": []string{"workstation-name"}}
+			req.URL.RawQuery = ":name=workstation-name"
 		})
 
 		Context("when everything succeeds", func() {
@@ -205,7 +208,7 @@ var _ = Describe("WorkstationHandler", func() {
 
 		BeforeEach(func() {
 			req = newTestRequest("")
-			req.Form = url.Values{":name": []string{"workstation-name"}}
+			req.URL.RawQuery = ":name=workstation-name"
 		})
 
 		Context("when the workstation doesn't exists", func() {
@@ -264,6 +267,97 @@ var _ = Describe("WorkstationHandler", func() {
 
 			It("fails with a 404 NOT FOUND", func() {
 				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
+			})
+		})
+	})
+
+	Describe("AddKey", func() {
+		var req *http.Request
+
+		BeforeEach(func() {
+			req = newTestRequest("a-key")
+			req.URL.RawQuery = ":name=workstation-name"
+		})
+
+		Context("when the workstation is not RUNNING", func() {
+			var server *ghttp.Server
+
+			BeforeEach(func() {
+				server = ghttp.NewServer()
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/add-key/something"),
+						func(w http.ResponseWriter, r *http.Request) {
+							body, err := ioutil.ReadAll(r.Body)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(string(body)).To(Equal("a-key"))
+						},
+					),
+				)
+				fakeRouteProvider.SSHRouteReturns(server.URL())
+				actualLRPResponse := receptor.ActualLRPResponse{
+					ProcessGuid: "my-workstation",
+					State:       receptor.ActualLRPStateRunning,
+				}
+				response := []receptor.ActualLRPResponse{actualLRPResponse}
+				fakeReceptorClient.ActualLRPsByProcessGuidReturns(response, nil)
+				handler.AddKey(responseRecorder, req)
+			})
+
+			It("returns a 201 CREATED", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusCreated))
+			})
+
+			It("sends a add-key request to the TEA", func() {
+				Expect(server.ReceivedRequests()).To(HaveLen(1))
+			})
+		})
+
+		Context("when the workstation doesn't exists", func() {
+			BeforeEach(func() {
+				handler.AddKey(responseRecorder, req)
+			})
+
+			It("fails with a 404 NOT FOUND", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("returns an LRPNotFound error", func() {
+				var responseError receptor.Error
+				err := json.Unmarshal(responseRecorder.Body.Bytes(), &responseError)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(responseError).To(Equal(receptor.Error{
+					Type:    teapot.WorkstationNotFound,
+					Message: "Workstation with name 'workstation-name' not found",
+				}))
+			})
+		})
+
+		Context("when the workstation is not RUNNING", func() {
+			BeforeEach(func() {
+				actualLRPResponse := receptor.ActualLRPResponse{
+					ProcessGuid: "my-workstation",
+					State:       receptor.ActualLRPStateClaimed,
+				}
+				response := []receptor.ActualLRPResponse{actualLRPResponse}
+				fakeReceptorClient.ActualLRPsByProcessGuidReturns(response, nil)
+				handler.AddKey(responseRecorder, req)
+			})
+
+			It("fails with a 400 Bad Request", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusBadRequest))
+			})
+
+			It("returns an InvalidWorkstation error", func() {
+				var responseError receptor.Error
+				err := json.Unmarshal(responseRecorder.Body.Bytes(), &responseError)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(responseError).To(Equal(receptor.Error{
+					Type:    teapot.InvalidWorkstation,
+					Message: "Workstation my-workstation is not RUNNING.",
+				}))
 			})
 		})
 	})

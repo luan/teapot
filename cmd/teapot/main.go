@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/luan/teapot/handlers"
 	"github.com/luan/teapot/managers"
+	"github.com/luan/teapot/models"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -86,7 +87,8 @@ func main() {
 		"apps_domain":      *appsDomain,
 	})
 	receptorClient := receptor.NewClient(*receptorAddress)
-	workstationManager := managers.NewWorkstationManager(receptorClient, *appsDomain, *teaSecret, logger)
+	routeProvider := models.NewRouteProvider(*appsDomain)
+	workstationManager := managers.NewWorkstationManager(receptorClient, routeProvider, *teaSecret, logger)
 	handler := handlers.New(workstationManager, logger, *username, *password)
 
 	members := grouper.Members{

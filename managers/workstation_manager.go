@@ -1,7 +1,12 @@
 package managers
 
 import (
+	"bytes"
 	"fmt"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
@@ -45,21 +50,22 @@ type WorkstationManager interface {
 	Delete(name string) error
 	Fetch(name string) ([]receptor.ActualLRPResponse, error)
 	List() ([]models.Workstation, error)
+	AddKey(name string, key []byte) error
 }
 
 type workstationManager struct {
 	receptorClient receptor.Client
 	logger         lager.Logger
-	appsDomain     string
 	teaSecret      string
+	routeProvider  models.RouteProvider
 }
 
-func NewWorkstationManager(receptorClient receptor.Client, appsDomain, teaSecret string, logger lager.Logger) WorkstationManager {
+func NewWorkstationManager(receptorClient receptor.Client, routeProvider models.RouteProvider, teaSecret string, logger lager.Logger) WorkstationManager {
 	return &workstationManager{
 		receptorClient: receptorClient,
 		logger:         logger,
-		appsDomain:     appsDomain,
 		teaSecret:      teaSecret,
+		routeProvider:  routeProvider,
 	}
 }
 
@@ -75,10 +81,10 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 		return models.ValidationError{models.ErrDuplicateField{"name"}}
 	}
 
-	route := "tiego-" + workstation.Name + "." + m.appsDomain
-	sshRoute := "ssh-" + workstation.Name + "." + m.appsDomain
+	tiegoRoute := m.routeProvider.TiegoRoute(workstation.Name)
+	sshRoute := m.routeProvider.SSHRoute(workstation.Name)
 	routingInfo := cfroutes.CFRoutes{
-		{Hostnames: []string{route}, Port: 3000},
+		{Hostnames: []string{tiegoRoute}, Port: 3000},
 		{Hostnames: []string{sshRoute}, Port: 8080},
 	}.RoutingInfo()
 
@@ -151,6 +157,23 @@ func (m *workstationManager) Delete(name string) error {
 
 func (m *workstationManager) Fetch(name string) ([]receptor.ActualLRPResponse, error) {
 	return m.receptorClient.ActualLRPsByProcessGuid(name)
+}
+
+func (m *workstationManager) AddKey(name string, key []byte) error {
+	route := m.routeProvider.SSHRoute(name)
+	if !strings.HasPrefix(route, "http://") && !strings.HasPrefix(route, "https://") {
+		route = "http://" + route
+	}
+	u, _ := url.Parse(route)
+	u.Path = path.Join("add-key", m.teaSecret)
+
+	body := bytes.NewReader(key)
+	_, err := http.Post(u.String(), "text/plain", body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *workstationManager) List() ([]models.Workstation, error) {

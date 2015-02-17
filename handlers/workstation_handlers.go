@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"github.com/luan/teapot/managers"
 	"github.com/luan/teapot/models"
 	"github.com/pivotal-golang/lager"
+	"github.com/tedsuo/rata"
 )
 
 var upgrader = websocket.Upgrader{
@@ -83,7 +85,7 @@ func (h *WorkstationHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkstationHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue(":name")
+	name := rata.Param(r, "name")
 	log := h.logger.Session("delete", lager.Data{
 		"Name": name,
 	})
@@ -101,7 +103,7 @@ func (h *WorkstationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue(":name")
+	name := rata.Param(r, "name")
 	log := h.logger.Session("attach", lager.Data{
 		"Name": name,
 	})
@@ -160,6 +162,44 @@ func (h *WorkstationHandler) Attach(w http.ResponseWriter, r *http.Request) {
 	<-done
 
 	log.Info("unattached", lager.Data{"workstation_name": name})
+}
+
+func (h *WorkstationHandler) AddKey(w http.ResponseWriter, r *http.Request) {
+	name := rata.Param(r, "name")
+
+	log := h.logger.Session("add-key", lager.Data{
+		"Name": name,
+	})
+
+	actualLRPs, err := h.manager.Fetch(name)
+	if err != nil || len(actualLRPs) == 0 {
+		log.Info("not-found", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
+		writeWorkstationNotFoundResponse(w, name)
+		return
+	}
+
+	workstation := actualLRPs[0]
+	if workstation.State != receptor.ActualLRPStateRunning {
+		log.Info("not-running", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
+		writeInvalidWorkstationResponse(w, workstation)
+		return
+	}
+
+	key, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Info("bad-request", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = h.manager.AddKey(name, key)
+	if err != nil {
+		log.Info("cannot-add", lager.Data{"workstation_name": name, "actual_lrps": actualLRPs, "error": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (h *WorkstationHandler) proxyWebsocket(s *websocket.Conn, d *websocket.Conn, done chan bool) {

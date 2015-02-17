@@ -14,10 +14,11 @@ func New(workstationManager managers.WorkstationManager, logger lager.Logger, us
 
 	actions := rata.Handlers{
 		// Workstations
-		teapot.CreateWorkstationRoute: route(workstationHandler.Create),
-		teapot.DeleteWorkstationRoute: route(workstationHandler.Delete),
-		teapot.AttachWorkstationRoute: route(workstationHandler.Attach),
-		teapot.ListWorkstationsRoute:  route(workstationHandler.List),
+		teapot.CreateWorkstationRoute:   route(workstationHandler.Create),
+		teapot.DeleteWorkstationRoute:   route(workstationHandler.Delete),
+		teapot.AttachWorkstationRoute:   route(workstationHandler.Attach),
+		teapot.ListWorkstationsRoute:    route(workstationHandler.List),
+		teapot.AddKeyToWorkstationRoute: route(workstationHandler.AddKey),
 	}
 
 	handler, err := rata.NewRouter(teapot.Routes, actions)
