@@ -22,6 +22,7 @@ const (
 	username   = "username"
 	password   = "password"
 	appsDomain = "tiego.com"
+	teaSecret  = "s3cret"
 )
 
 var logger lager.Logger
@@ -77,6 +78,7 @@ var _ = BeforeEach(func() {
 		Username:        username,
 		Password:        password,
 		AppsDomain:      appsDomain,
+		TEASecret:       teaSecret,
 	}
 	teapotRunner = testrunner.New(teapotBinPath, teapotArgs)
 })

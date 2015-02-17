@@ -12,6 +12,7 @@ type Args struct {
 	Username        string
 	Password        string
 	AppsDomain      string
+	TEASecret       string
 }
 
 func (args Args) ArgSlice() []string {
@@ -21,6 +22,7 @@ func (args Args) ArgSlice() []string {
 		"-username", args.Username,
 		"-password", args.Password,
 		"-appsDomain", args.AppsDomain,
+		"-teaSecret", args.TEASecret,
 	}
 }
 

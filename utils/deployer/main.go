@@ -24,10 +24,6 @@ var filename = flag.String(
 	"the filename to download from the bucket",
 )
 
-const (
-	spyDownloadURL string = "http://file_server.service.dc1.consul:8080/v1/static/docker-circus/docker-circus.tgz"
-)
-
 var receptorAddr string
 
 func DockerTeapot(client receptor.Client, routeRoot string) error {
@@ -62,10 +58,6 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 				From: teapotDownloadURL,
 				To:   "/tmp",
 			},
-			&models.DownloadAction{
-				From: spyDownloadURL,
-				To:   "/tmp",
-			},
 		}, ""},
 		Action: &models.RunAction{
 			Path: "/tmp/teapot",
@@ -74,14 +66,9 @@ func DockerTeapot(client receptor.Client, routeRoot string) error {
 				"-receptorAddress", receptorAddr,
 				"-username", username,
 				"-password", password,
-				"-appsDomain", "ketchup.cf-apps.com",
+				"-appsDomain", routeRoot,
 			},
 			LogSource: "TEAPOT",
-		},
-		Monitor: &models.RunAction{
-			Path:      "/tmp/spy",
-			Args:      []string{"-addr", fmt.Sprintf(":%d", 8080)},
-			LogSource: "SPY",
 		},
 		DiskMB:    128,
 		MemoryMB:  64,

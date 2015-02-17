@@ -8,7 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	diego_models "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/gorilla/websocket"
 	"github.com/luan/teapot"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -37,13 +37,14 @@ var _ = Describe("Workstation API", func() {
 
 			routingInfo := cfroutes.CFRoutes{
 				{Hostnames: []string{"tiego-my-workstation.tiego.com"}, Port: 3000},
+				{Hostnames: []string{"ssh-my-workstation.tiego.com"}, Port: 8080},
 			}.RoutingInfo()
 
-			openRule := models.SecurityGroupRule{
-				Protocol:     models.AllProtocol,
+			openRule := diego_models.SecurityGroupRule{
+				Protocol:     diego_models.AllProtocol,
 				Destinations: []string{"0.0.0.0/0"},
 			}
-			openRules := []models.SecurityGroupRule{openRule}
+			openRules := []diego_models.SecurityGroupRule{openRule}
 
 			createDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.CreateDesiredLRPRoute)
 			getDesiredLRPRoute, _ := receptor.Routes.FindRouteByName(receptor.GetDesiredLRPRoute)
@@ -57,12 +58,32 @@ var _ = Describe("Workstation API", func() {
 					ghttp.VerifyRequest(createDesiredLRPRoute.Method, createDesiredLRPRoute.Path),
 					ghttp.VerifyJSONRepresenting(receptor.DesiredLRPCreateRequest{
 						ProcessGuid: "my-workstation",
-						Setup: &models.SerialAction{
-							Actions: []models.Action{
-								&models.DownloadAction{
+						Setup: &diego_models.SerialAction{
+							Actions: []diego_models.Action{
+								&diego_models.DownloadAction{
+									From:     "https://tiego-artifacts.s3.amazonaws.com/dropbear/dropbear.tar.gz",
+									To:       "/tmp",
+									CacheKey: "dropbear",
+								},
+								&diego_models.DownloadAction{
 									From:     "https://tiego-artifacts.s3.amazonaws.com/tea-builds/tea-latest.tgz",
 									To:       "/tmp",
 									CacheKey: "tea",
+								},
+								&diego_models.RunAction{
+									Path:      "/tmp/dropbearkey",
+									LogSource: "KEYGEN",
+									Args:      []string{"-t", "rsa", "-f", "/tmp/dropbear_rsa_host_key"},
+								},
+								&diego_models.RunAction{
+									Path:      "/tmp/dropbearkey",
+									LogSource: "KEYGEN",
+									Args:      []string{"-t", "dss", "-f", "/tmp/dropbear_dss_host_key"},
+								},
+								&diego_models.RunAction{
+									Path:      "/tmp/dropbearkey",
+									LogSource: "KEYGEN",
+									Args:      []string{"-t", "ecdsa", "-f", "/tmp/dropbear_ecdsa_host_key"},
 								},
 							},
 						},
@@ -77,10 +98,27 @@ var _ = Describe("Workstation API", func() {
 						LogSource:  "TEAPOT-WORKSTATION",
 						Ports:      []uint16{8080, 3000},
 						Routes:     routingInfo,
-						Action: &models.RunAction{
-							Path:       "/tmp/tea",
-							LogSource:  "TEA",
-							Privileged: false,
+						Privileged: true,
+						Action: &diego_models.ParallelAction{
+							Actions: []diego_models.Action{
+								&diego_models.RunAction{
+									Path:      "/bin/bash",
+									LogSource: "SSHD",
+									Args: []string{
+										"-c",
+										`set -e && /tmp/dropbear -p 127.0.0.1:22000 -r /tmp/dropbear_rsa_host_key -r /tmp/dropbear_dss_host_key -r /tmp/dropbear_ecdsa_host_key`,
+									},
+									Privileged: false,
+								},
+								&diego_models.RunAction{
+									Path: "/tmp/tea",
+									Args: []string{
+										"-secret", "s3cret",
+									},
+									LogSource:  "TEA",
+									Privileged: false,
+								},
+							},
 						},
 						EgressRules: openRules,
 					}),

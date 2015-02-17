@@ -47,6 +47,12 @@ var password = flag.String(
 	"password for basic auth",
 )
 
+var teaSecret = flag.String(
+	"teaSecret",
+	"",
+	"secret for accessing the TEA API",
+)
+
 func PrintUsageAndExit() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	flag.PrintDefaults()
@@ -80,7 +86,7 @@ func main() {
 		"apps_domain":      *appsDomain,
 	})
 	receptorClient := receptor.NewClient(*receptorAddress)
-	workstationManager := managers.NewWorkstationManager(receptorClient, *appsDomain, logger)
+	workstationManager := managers.NewWorkstationManager(receptorClient, *appsDomain, *teaSecret, logger)
 	handler := handlers.New(workstationManager, logger, *username, *password)
 
 	members := grouper.Members{

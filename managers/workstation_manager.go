@@ -10,6 +10,36 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
+var setupAction = &diego_models.SerialAction{
+	Actions: []diego_models.Action{
+		&diego_models.DownloadAction{
+			From:     "https://tiego-artifacts.s3.amazonaws.com/dropbear/dropbear.tar.gz",
+			To:       "/tmp",
+			CacheKey: "dropbear",
+		},
+		&diego_models.DownloadAction{
+			From:     "https://tiego-artifacts.s3.amazonaws.com/tea-builds/tea-latest.tgz",
+			To:       "/tmp",
+			CacheKey: "tea",
+		},
+		&diego_models.RunAction{
+			Path:      "/tmp/dropbearkey",
+			LogSource: "KEYGEN",
+			Args:      []string{"-t", "rsa", "-f", "/tmp/dropbear_rsa_host_key"},
+		},
+		&diego_models.RunAction{
+			Path:      "/tmp/dropbearkey",
+			LogSource: "KEYGEN",
+			Args:      []string{"-t", "dss", "-f", "/tmp/dropbear_dss_host_key"},
+		},
+		&diego_models.RunAction{
+			Path:      "/tmp/dropbearkey",
+			LogSource: "KEYGEN",
+			Args:      []string{"-t", "ecdsa", "-f", "/tmp/dropbear_ecdsa_host_key"},
+		},
+	},
+}
+
 type WorkstationManager interface {
 	Create(workstation models.Workstation) error
 	Delete(name string) error
@@ -21,13 +51,15 @@ type workstationManager struct {
 	receptorClient receptor.Client
 	logger         lager.Logger
 	appsDomain     string
+	teaSecret      string
 }
 
-func NewWorkstationManager(receptorClient receptor.Client, appsDomain string, logger lager.Logger) WorkstationManager {
+func NewWorkstationManager(receptorClient receptor.Client, appsDomain, teaSecret string, logger lager.Logger) WorkstationManager {
 	return &workstationManager{
 		receptorClient: receptorClient,
 		logger:         logger,
 		appsDomain:     appsDomain,
+		teaSecret:      teaSecret,
 	}
 }
 
@@ -44,47 +76,61 @@ func (m *workstationManager) Create(workstation models.Workstation) error {
 	}
 
 	route := "tiego-" + workstation.Name + "." + m.appsDomain
+	sshRoute := "ssh-" + workstation.Name + "." + m.appsDomain
 	routingInfo := cfroutes.CFRoutes{
 		{Hostnames: []string{route}, Port: 3000},
+		{Hostnames: []string{sshRoute}, Port: 8080},
 	}.RoutingInfo()
 
-	openRule := diego_models.SecurityGroupRule{
-		Protocol:     diego_models.AllProtocol,
-		Destinations: []string{"0.0.0.0/0"},
+	openRules := []diego_models.SecurityGroupRule{
+		{
+			Protocol:     diego_models.AllProtocol,
+			Destinations: []string{"0.0.0.0/0"},
+		},
 	}
-	openRules := []diego_models.SecurityGroupRule{openRule}
 
 	if err != nil {
 		log.Debug("marshalling-route-json-failed", lager.Data{"error": err})
 	}
 
-	lrpRequest := receptor.DesiredLRPCreateRequest{
-		ProcessGuid: workstation.Name,
-		Setup: &diego_models.SerialAction{
-			Actions: []diego_models.Action{
-				&diego_models.DownloadAction{
-					From:     "https://tiego-artifacts.s3.amazonaws.com/tea-builds/tea-latest.tgz",
-					To:       "/tmp",
-					CacheKey: "tea",
+	mainAction := &diego_models.ParallelAction{
+		Actions: []diego_models.Action{
+			&diego_models.RunAction{
+				Path:      "/bin/bash",
+				LogSource: "SSHD",
+				Args: []string{
+					"-c",
+					`set -e && /tmp/dropbear -p 127.0.0.1:22000 -r /tmp/dropbear_rsa_host_key -r /tmp/dropbear_dss_host_key -r /tmp/dropbear_ecdsa_host_key`,
 				},
+				Privileged: false,
+			},
+			&diego_models.RunAction{
+				Path: "/tmp/tea",
+				Args: []string{
+					"-secret", m.teaSecret,
+				},
+				LogSource:  "TEA",
+				Privileged: false,
 			},
 		},
-		Domain:     "tiego",
-		Instances:  1,
-		Stack:      "lucid64",
-		RootFSPath: workstation.DockerImage,
-		CPUWeight:  workstation.CPUWeight,
-		DiskMB:     workstation.DiskMB,
-		MemoryMB:   workstation.MemoryMB,
-		LogGuid:    workstation.Name,
-		LogSource:  "TEAPOT-WORKSTATION",
-		Ports:      []uint16{8080, 3000},
-		Routes:     routingInfo,
-		Action: &diego_models.RunAction{
-			Path:       "/tmp/tea",
-			LogSource:  "TEA",
-			Privileged: false,
-		},
+	}
+
+	lrpRequest := receptor.DesiredLRPCreateRequest{
+		ProcessGuid: workstation.Name,
+		Setup:       setupAction,
+		Domain:      "tiego",
+		Instances:   1,
+		Stack:       "lucid64",
+		RootFSPath:  workstation.DockerImage,
+		CPUWeight:   workstation.CPUWeight,
+		DiskMB:      workstation.DiskMB,
+		MemoryMB:    workstation.MemoryMB,
+		LogGuid:     workstation.Name,
+		LogSource:   "TEAPOT-WORKSTATION",
+		Ports:       []uint16{8080, 3000},
+		Routes:      routingInfo,
+		Privileged:  true,
+		Action:      mainAction,
 		EgressRules: openRules,
 	}
 

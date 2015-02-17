@@ -34,7 +34,8 @@ var _ = Describe("WorkstationHandler", func() {
 		responseRecorder = httptest.NewRecorder()
 		fakeReceptorClient = new(fake_receptor.FakeClient)
 		appsDomain := "tiego.com"
-		manager = managers.NewWorkstationManager(fakeReceptorClient, appsDomain, logger)
+		teaSecret := "something"
+		manager = managers.NewWorkstationManager(fakeReceptorClient, appsDomain, teaSecret, logger)
 		handler = NewWorkstationHandler(manager, logger)
 	})
 
