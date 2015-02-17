@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/luan/teapot",
-	"GoVersion": "go1.4",
+	"GoVersion": "go1.4.1",
 	"Packages": [
 		"./..."
 	],
@@ -23,7 +23,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/receptor",
-			"Rev": "5da391b229ceffddda22c884615fafb157944ad9"
+			"Rev": "c6a34641388dcc044c46b3f510accfa9e9b8d212"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/cfroutes",
@@ -31,7 +31,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "a1f8505faae18bf93bb022f2daa14b6acb8373f1"
+			"Rev": "0af97e170ecea0ee16d71ddc5a36b584fa8760db"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/dropsonde",
@@ -66,7 +66,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "389345f09521afe9c164379d98cb70335aff8726"
+			"Rev": "44a3d9605a8e0c0955dc714d98f9054aa09fe1c6"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
